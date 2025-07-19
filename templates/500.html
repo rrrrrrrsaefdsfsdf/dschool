@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Ошибка сервера (500){% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5">
+  <h1 class="display-1 text-danger">500</h1>
+  <h2 class="mb-4">Внутренняя ошибка сервера</h2>
+  <p class="lead">
+    Что-то пошло не так. Пожалуйста, попробуйте обновить страницу или вернитесь позже.
+  </p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">На главную</a>
+</div>
+{% endblock %}

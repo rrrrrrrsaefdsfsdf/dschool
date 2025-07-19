@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Инструкции — {{ lab.title }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Панель управления</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_labs') }}">Лабораторные работы</a></li>
+            <li class="breadcrumb-item active">Инструкции</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Инструкции для лабораторной</h2>
+        <a class="btn btn-success" href="{{ url_for('admin.admin_lab_instruction_new', lab_id=lab.id) }}">
+            <i class="fas fa-plus"></i> Добавить инструкцию
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">🧪 {{ lab.title }}</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-1"><strong>Описание:</strong> {{ lab.description }}</p>
+            <p class="mb-1"><strong>Сложность:</strong> 
+                <span class="badge bg-{{ 'success' if lab.difficulty == 'Легко' else 'warning' if lab.difficulty == 'Средне' else 'danger' }}">
+                    {{ lab.difficulty }}
+                </span>
+            </p>
+            <p class="mb-0"><strong>Эндпоинт:</strong> <code>{{ lab.endpoint }}</code></p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if instructions %}
+        <div class="row">
+            {% for instruction in instructions %}
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header bg-{{ 'info' if instruction.instruction_type == 'before_start' else 'success' if instruction.instruction_type == 'after_solve' else 'warning' if instruction.instruction_type == 'flag_format' else 'primary' }} text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                {% if instruction.instruction_type == 'before_start' %}
+                                    📝 Перед началом работы
+                                {% elif instruction.instruction_type == 'after_solve' %}
+                                    ✅ После решения
+                                {% elif instruction.instruction_type == 'flag_format' %}
+                                    🏁 Формат флага
+                                {% elif instruction.instruction_type == 'flag_instruction' %}
+                                    💡 Инструкция по флагу
+                                {% else %}
+                                    {{ instruction.instruction_type }}
+                                {% endif %}
+                            </h6>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('admin.admin_lab_instruction_edit', lab_id=lab.id, instruction_id=instruction.id) }}" 
+                                   class="btn btn-sm btn-light">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" 
+                                      action="{{ url_for('admin.admin_lab_instruction_delete', lab_id=lab.id, instruction_id=instruction.id) }}" 
+                                      style="display:inline-block;" 
+                                      onsubmit="return confirm('Удалить инструкцию?');">
+                                    {{ csrf_token() }}
+                                    <button type="submit" class="btn btn-sm btn-light">
+                                        <i class="fas fa-trash text-danger"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ instruction.content }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <h5>📋 Инструкций пока нет</h5>
+                <p class="text-muted">Добавьте инструкции для этой лабораторной работы.</p>
+                <a href="{{ url_for('admin.admin_lab_instruction_new', lab_id=lab.id) }}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Добавить инструкцию
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="mt-4 alert alert-info">
+        <h6>ℹ️ Типы инструкций:</h6>
+        <ul class="mb-0">
+            <li><strong>Перед началом работы</strong> — отображается перед кнопкой запуска лабораторной</li>
+            <li><strong>После решения</strong> — показывается после успешной отправки флага</li>
+            <li><strong>Формат флага</strong> — placeholder для поля ввода флага (например: FLAG{...})</li>
+            <li><strong>Инструкция по флагу</strong> — текст под полем ввода флага</li>
+        </ul>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('admin.admin_labs') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к лабораториям
+        </a>
+        <a href="{{ url_for('admin.admin_lab_hints', lab_id=lab.id) }}" class="btn btn-info">
+            <i class="fas fa-lightbulb"></i> Управление подсказками
+        </a>
+    </div>
+</div>
+{% endblock %}

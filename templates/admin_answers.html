@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Проверка ответов студентов{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-clipboard-check"></i> Проверка ответов студентов</h2>
+    <div>
+      <a class="btn btn-outline-primary" href="{{ url_for('admin.admin_tasks') }}">
+        <i class="fas fa-tasks"></i> Управление задачами
+      </a>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body text-center">
+          <h4 class="text-warning">{{ answers|length }}</h4>
+          <small>Ответов на проверке</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <form method="get" class="d-flex align-items-center gap-3">
+            <label for="typeFilter" class="form-label mb-0">Фильтр по типу:</label>
+            <select id="typeFilter" name="type" class="form-select" onchange="this.form.submit()">
+              <option value="" {% if not selected_type %}selected{% endif %}>🔍 Все задания</option>
+              <option value="Практика" {% if selected_type == 'Практика' %}selected{% endif %}>💻 Практика</option>
+              <option value="Теория" {% if selected_type == 'Теория' %}selected{% endif %}>📖 Теория</option>
+            </select>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if answers %}
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fas fa-list"></i> Ответы требующие проверки</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th><i class="fas fa-user"></i> Пользователь</th>
+                <th><i class="fas fa-tag"></i> Тип</th>
+                <th><i class="fas fa-tasks"></i> Задача</th>
+                <th><i class="fas fa-comment"></i> Ответ</th>
+                <th style="width: 180px;"><i class="fas fa-cogs"></i> Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in answers %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-circle bg-primary me-2">
+                        {{ a.user.username[0].upper() }}
+                      </div>
+                      <strong>{{ a.user.username }}</strong>
+                    </div>
+                  </td>
+                  <td>
+                    {% if a.task.type == 'Теория' %}
+                      <span class="badge bg-info"><i class="fas fa-book"></i> {{ a.task.type }}</span>
+                    {% else %}
+                      <span class="badge bg-success"><i class="fas fa-laptop-code"></i> {{ a.task.type }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <strong>{{ a.task.title }}</strong>
+                    <br><small class="text-muted">#{{ a.task.id }}</small>
+                  </td>
+                  <td>
+                    <div class="answer-preview" style="max-height: 100px; overflow-y: auto;">
+                      <pre class="mb-0 small" style="white-space: pre-wrap;">{{ a.user_answer }}</pre>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex gap-1">
+                      <form method="post" action="{{ url_for('admin.approve_answer', id=a.id) }}" class="d-inline-block" onsubmit="return confirm('Подтвердить ответ пользователя {{ a.user.username }}?');">
+                        <button type="submit" class="btn btn-success btn-sm" title="Подтвердить">
+                          <i class="fas fa-check"></i>
+                        </button>
+                      </form>
+                      <form method="post" action="{{ url_for('admin.reject_answer', id=a.id) }}" class="d-inline-block" onsubmit="return confirm('Отклонить ответ пользователя {{ a.user.username }}?');">
+                        <button type="submit" class="btn btn-danger btn-sm" title="Отклонить">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </form>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="showFullAnswer('{{ a.id }}')" title="Показать полный ответ">
+                        <i class="fas fa-expand"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+        <h5>Все ответы проверены!</h5>
+        <p class="text-muted">Нет новых ответов на проверку.</p>
+        <a class="btn btn-primary" href="{{ url_for('admin.admin_tasks') }}">
+          <i class="fas fa-tasks"></i> Перейти к управлению задачами
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="mt-4">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i> Назад в панель управления
+    </a>
+  </div>
+</div>
+
+<div class="modal fade" id="answerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Полный ответ студента</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="fullAnswerContent" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.avatar-circle {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.answer-preview {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.answer-preview pre {
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+</style>
+
+<script>
+function showFullAnswer(answerId) {
+  const row = document.querySelector(`tr:has(form[action*="${answerId}"])`);
+  const answerText = row.querySelector('.answer-preview pre').textContent;
+  document.getElementById('fullAnswerContent').textContent = answerText;
+  new bootstrap.Modal(document.getElementById('answerModal')).show();
+}
+</script>
+{% endblock %}

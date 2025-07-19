@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Панель управления</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_labs') }}">Лабораторные работы</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_lab_instructions', lab_id=lab.id) }}">Инструкции</a></li>
+            <li class="breadcrumb-item active">{{ title }}</li>
+        </ol>
+    </nav>
+
+    <h2>📋 {{ title }}</h2>
+    <p class="text-muted">Лаборатория: <strong>{{ lab.title }}</strong></p>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{ form.instruction_type.label(class="form-label") }}
+                    {{ form.instruction_type(class="form-select") }}
+                    {% if form.instruction_type.errors %}
+                        <div class="text-danger">
+                            {% for error in form.instruction_type.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.content.label(class="form-label") }}
+                    {{ form.content(class="form-control", rows=5, placeholder="Введите текст инструкции...") }}
+                    {% if form.content.errors %}
+                        <div class="text-danger">
+                            {% for error in form.content.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="alert alert-info">
+                    <h6>💡 Примеры инструкций:</h6>
+                    <ul class="mb-0">
+                        <li><strong>Перед началом:</strong> "Внимание! Это учебная среда. Используйте техники SQL-инъекций для получения флага."</li>
+                        <li><strong>После решения:</strong> "Отлично! Вы успешно эксплуатировали уязвимость. Изучите код лабораторной для понимания защиты."</li>
+                        <li><strong>Формат флага:</strong> "FLAG{ваш_текст_здесь}"</li>
+                        <li><strong>Инструкция по флагу:</strong> "Скопируйте флаг точно как он отображается в результате эксплуатации."</li>
+                    </ul>
+                </div>
+
+                <div class="d-flex gap-2">
+                    {{ form.submit(class="btn btn-success") }}
+                    <a href="{{ url_for('admin.admin_lab_instructions', lab_id=lab.id) }}" class="btn btn-secondary">
+                        Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

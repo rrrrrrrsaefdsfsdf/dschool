@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">{{ title }}</h4>
+                        <a href="{{ url_for('admin.admin_labs') }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left"></i> Назад
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="labForm">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-info-circle"></i> Основная информация
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="{{ form.title.id }}" class="form-label">{{ form.title.label.text }}</label>
+                                {{ form.title(class="form-control") }}
+                                {% if form.title.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.title.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.description.id }}" class="form-label">{{ form.description.label.text }}</label>
+                                {{ form.description(class="form-control", rows="4") }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.description.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="{{ form.difficulty.id }}" class="form-label">{{ form.difficulty.label.text }}</label>
+                                    {{ form.difficulty(class="form-select") }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.type.id }}" class="form-label">{{ form.type.label.text }}</label>
+                                    {{ form.type(class="form-select") }}
+                                </div>
+                            </div>
+                        </div>
+
+
+
+
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-flag"></i> Настройки флага
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="{{ form.flag_content.id }}" class="form-label">{{ form.flag_content.label.text }}</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">FLAG{</span>
+                                    {{ form.flag_content(class="form-control", id="flag_content") }}
+                                    <span class="input-group-text bg-light">}</span>
+                                </div>
+                                <div class="form-text">
+                                    <strong>Полный флаг:</strong>
+                                    <span class="text-success">FLAG{<span id="flag_preview">введите_содержимое</span>}</span>
+                                </div>
+                                {% if form.flag_content.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.flag_content.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+
+
+
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> {{ form.submit.label.text }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+
+<!-- Модальное окно для предварительного просмотра -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye"></i> Предварительный просмотр шаблона
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent" class="border p-3 bg-light">
+                    <!-- Здесь будет превью -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Обновление превью эндпоинта
+document.getElementById('endpoint_suffix').addEventListener('input', function(e) {
+    const preview = document.getElementById('endpoint_preview');
+    preview.textContent = e.target.value || 'введите_суффикс';
+});
+
+// Обновление превью флага
+document.getElementById('flag_content').addEventListener('input', function(e) {
+    const preview = document.getElementById('flag_preview');
+    preview.textContent = e.target.value || 'введите_содержимое';
+});
+
+// Переключение между источниками шаблонов
+document.getElementById('template_source').addEventListener('change', function(e) {
+    const dbSection = document.getElementById('db_template_section');
+    const fileSection = document.getElementById('file_template_section');
+
+    if (e.target.value === 'existing') {
+        dbSection.style.display = 'block';
+        fileSection.style.display = 'none';
+    } else if (e.target.value === 'file') {
+        dbSection.style.display = 'none';
+        fileSection.style.display = 'block';
+    } else {
+        dbSection.style.display = 'none';
+        fileSection.style.display = 'none';
+    }
+});
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('template_source').dispatchEvent(new Event('change'));
+});
+
+// Предварительный просмотр шаблона
+function previewTemplate() {
+    const templateFile = document.getElementById('template_file').value;
+    if (!templateFile) {
+        alert('Выберите файл шаблона для просмотра');
+        return;
+    }
+
+    fetch(`/admin/preview-template-file/${templateFile}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('previewContent').innerHTML = html;
+            const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+            modal.show();
+        })
+        .catch(error => {
+            alert('Ошибка загрузки предварительного просмотра: ' + error);
+        });
+}
+</script>
+
+<style>
+.input-group-text {
+    font-family: monospace;
+}
+
+#endpoint_preview, #flag_preview {
+    font-weight: bold;
+}
+
+.template-list ul {
+    margin-bottom: 0.5rem;
+}
+
+.template-list li {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+</style>
+{% endblock %}

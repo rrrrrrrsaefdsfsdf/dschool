@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Лаба: UNION SQL инъекция{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='lab-styles.css') }}">
+<div class="lab-wrapper">
+    <div class="lab-header lab-union-header">
+        <h1>🔍 UNION SQL Инъекция</h1>
+        <p>{{ lab.description if lab else "Извлеките скрытые данные из базы используя технику UNION SELECT" }}</p>
+    </div>
+    <div class="lab-container">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="lab-search-box">
+                    <form method="POST" class="lab-search-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="text" name="search" class="lab-search-input"
+                               placeholder="Поиск товаров в каталоге..." value="{{ search if search else '' }}">
+                        <button type="submit" class="lab-btn lab-btn-search">
+                            <i class="fas fa-search me-2"></i>Найти товары
+                        </button>
+                    </form>
+                </div>
+                {% if error %}
+                    <div class="lab-error-alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+                    </div>
+                {% endif %}
+                {% if query %}
+                    <div class="lab-sql-output">
+                        <div style="font-size: 0.75rem; margin-bottom: 0.5rem; opacity: 0.7;">ВЫПОЛНЕННЫЙ SQL ЗАПРОС</div>
+                        <code>{{ query }}</code>
+                    </div>
+                {% endif %}
+                {% if results %}
+                    <div class="lab-content-card">
+                        <table class="lab-results-table">
+                            <thead>
+                                <tr>
+                                    <th>Название товара</th>
+                                    <th>Описание</th>
+                                    <th>Цена</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in results %}
+                                <tr>
+                                    <td>
+                                        {% if row[0] and 'FLAG' in str(row[0]) %}
+                                            <span class="lab-flag-found">🏁 {{ row[0] }}</span>
+                                        {% else %}
+                                            {{ row[0] if row[0] else '' }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row[1] and 'FLAG' in str(row[1]) %}
+                                            <span class="lab-flag-found">🏁 {{ row[1] }}</span>
+                                        {% else %}
+                                            {{ row[1] if row[1] else '' }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row[2] and 'FLAG' in str(row[2]) %}
+                                            <span class="lab-flag-found">🏁 {{ row[2] }}</span>
+                                        {% else %}
+                                            {% if row[2] %}{{ row[2] }} руб.{% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% elif search %}
+                    <div class="lab-content-card">
+                        <div class="lab-info-alert">
+                            <i class="fas fa-info-circle me-2"></i>По запросу "{{ search }}" ничего не найдено
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col-lg-4">
+                <div class="lab-content-card">
+                    <h5 class="mb-3">📚 Этапы атаки</h5>
+                    <div class="lab-step-card" data-step="1">
+                        <div class="lab-step-title">Определение количества колонок</div>
+                        <div class="lab-step-text">Используйте <code>ORDER BY</code> для подсчета столбцов</div>
+                    </div>
+                    <div class="lab-step-card" data-step="2">
+                        <div class="lab-step-title">Тестирование UNION</div>
+                        <div class="lab-step-text">Попробуйте <code>' UNION SELECT 1,2,3--</code></div>
+                    </div>
+                    <div class="lab-step-card" data-step="3">
+                        <div class="lab-step-title">Извлечение данных</div>
+                        <div class="lab-step-text">Сделайте запрос к таблице <code>flags</code></div>
+                    </div>
+                    <div class="lab-step-card" data-step="4" style="border-left-color: #10b981;">
+                        <div class="lab-step-title">Получение флага</div>
+                        <div class="lab-step-text"><code>' UNION SELECT flag_value,'секрет',0 FROM flags--</code></div>
+                    </div>
+                </div>
+                <div class="lab-content-card">
+                    <h5 class="mb-3">🗄️ Схема базы данных</h5>
+                    <div class="lab-table-schema">
+                        <strong>products (товары)</strong><br>
+                        ├─ id, name, description, price
+                    </div>
+                    <div class="lab-table-schema">
+                        <strong>users (пользователи)</strong><br>
+                        ├─ id, username, password, role
+                    </div>
+                    <div class="lab-table-schema lab-flag-table">
+                        <strong>flags (флаги)</strong> 🏁<br>
+                        ├─ id, flag_name, flag_value
+                    </div>
+                </div>
+                <div class="lab-content-card">
+                    <h5 class="mb-3">⚡ Полезные команды</h5>
+                    <div class="lab-info-alert">
+                        <strong>Определение колонок:</strong>
+                        <code>' ORDER BY 1--</code>, <code>' ORDER BY 2--</code>
+                    </div>
+                    <div class="lab-warning-alert">
+                        <strong>Базовый UNION:</strong>
+                        <code>' UNION SELECT NULL,NULL,NULL--</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

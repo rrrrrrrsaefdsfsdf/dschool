@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Куратор{% endblock %}
+{% block content %}
+<div class="container mt-5" style="max-width: 600px;">
+    <h1 class="mb-4">🎓 Связь с кураторами</h1>
+
+    {% if contacts %}
+        <div class="row">
+            {% for contact in contacts %}
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-user-tie me-2"></i>
+                            {{ contact.name if contact.name else 'Куратор' }}
+                        </h5>
+
+                        <div class="contact-info">
+                            {% if contact.telegram %}
+                            <div class="mb-2">
+                                <strong>
+                                    <i class="fab fa-telegram me-2 text-primary"></i>
+                                    Telegram:
+                                </strong>
+                                <a href="https://t.me/{{ contact.telegram }}"
+                                   target="_blank"
+                                   class="text-decoration-none ms-2">
+                                    @{{ contact.telegram }}
+                                </a>
+                            </div>
+                            {% endif %}
+
+                            {% if contact.email %}
+                            <div class="mb-2">
+                                <strong>
+                                    <i class="fas fa-envelope me-2 text-success"></i>
+                                    Email:
+                                </strong>
+                                <a href="mailto:{{ contact.email }}"
+                                   class="text-decoration-none ms-2">
+                                    {{ contact.email }}
+                                </a>
+                            </div>
+                            {% endif %}
+
+                            {% if not contact.telegram and not contact.email %}
+                            <div class="text-muted">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                Контакты не указаны
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mt-3">
+                            {% if contact.telegram %}
+                            <a href="https://t.me/{{ contact.telegram }}"
+                               target="_blank"
+                               class="btn btn-primary btn-sm">
+                                <i class="fab fa-telegram me-1"></i>
+                                Написать в Telegram
+                            </a>
+                            {% endif %}
+
+                            {% if contact.email %}
+                            <a href="mailto:{{ contact.email }}"
+                               class="btn btn-success btn-sm">
+                                <i class="fas fa-envelope me-1"></i>
+                                Отправить Email
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="alert alert-info mt-4" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Причины связаться с куратором:</strong><br>
+            • При возникновении вопросов по заданиям или лабораториям<br>
+            • Если нужна помощь с технической частью курса<br>
+            • При проблемах с доступом к платформе
+        </div>
+
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">Кураторы не назначены</h5>
+                    <p class="mb-0">В данный момент контакты кураторов не добавлены. Обратитесь к администратору.</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+
+<style>
+.contact-info {
+    min-height: 60px;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid rgba(0,0,0,.125);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,.15);
+}
+
+.btn-sm {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .col-md-6 {
+        margin-bottom: 1rem;
+    }
+
+    .container {
+        max-width: 100% !important;
+        margin: 0 1rem;
+        padding: 0;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Лаба: SQL инъекция в форме входа{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='lab-styles.css') }}">
+<div class="lab-wrapper">
+    <div class="lab-header lab-login-header">
+        <h1>🔓 SQL Инъекция: Обход Аутентификации</h1>
+        <p>{{ lab.description if lab else "Эксплуатируйте уязвимость для получения несанкционированного доступа к системе" }}</p>
+    </div>
+    <div class="lab-container">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="lab-content-card">
+                    <h2 class="mb-4">🚀 Система входа в аккаунт</h2>
+                    {% if error %}
+                        <div class="lab-error-alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                        </div>
+                    {% endif %}
+                    {% if success %}
+                        <div class="lab-success-box">
+                            <i class="fas fa-check-circle fa-4x mb-3"></i>
+                            <h3>Успешный вход в систему!</h3>
+                            <p class="mb-2">Добро пожаловать: <strong>{{ user_data.username }}</strong></p>
+                            <p>Уровень доступа: <strong>{{ user_data.role }}</strong></p>
+                            {% if user_data.secret %}
+                                <div class="lab-flag-display">
+                                    🏁 {{ user_data.secret }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="lab-form-modern">
+                            <form method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <div class="lab-form-group">
+                                    <input type="text" name="username" class="lab-form-control" placeholder=" " required>
+                                    <label class="lab-form-label">Имя пользователя</label>
+                                </div>
+                                <div class="lab-form-group">
+                                    <input type="password" name="password" class="lab-form-control" placeholder=" ">
+                                    <label class="lab-form-label">Пароль</label>
+                                </div>
+                                <button type="submit" class="lab-btn lab-btn-submit">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Войти в систему
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                    {% if query %}
+                        <div class="lab-sql-output">
+                            <div style="font-size: 0.75rem; margin-bottom: 0.5rem; opacity: 0.7;">SQL ЗАПРОС</div>
+                            <code>{{ query }}</code>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="lab-content-card">
+                    <h5 class="mb-3">💡 Подсказки для атаки</h5>
+                    <div class="lab-hint-card">
+                        <div class="lab-hint-title">Уровень 1: Разведка</div>
+                        <div class="lab-hint-text">Проверьте реакцию системы на символ <code>'</code></div>
+                    </div>
+                    <div class="lab-hint-card">
+                        <div class="lab-hint-title">Уровень 2: Обход логики</div>
+                        <div class="lab-hint-text">Используйте <code>OR '1'='1'</code> для обхода проверки</div>
+                    </div>
+                    <div class="lab-hint-card">
+                        <div class="lab-hint-title">Уровень 3: Комментарии</div>
+                        <div class="lab-hint-text">Завершите запрос комментарием <code>--</code></div>
+                    </div>
+                    <div class="lab-hint-card" style="border-left-color: #10b981;">
+                        <div class="lab-hint-title">🎯 Готовое решение</div>
+                        <div class="lab-hint-text"><code>admin' OR '1'='1' --</code></div>
+                    </div>
+                </div>
+                <div class="lab-content-card">
+                    <h5 class="mb-3">📊 Информация о лабе</h5>
+                    <div class="mb-3">
+                        <span class="lab-info-badge">{{ lab.difficulty if lab else "Легкая" }}</span>
+                        <span class="lab-info-badge">{{ lab.type if lab else "SQL Инъекция" }}</span>
+                    </div>
+                    <div class="lab-structure-box">
+                        <strong>Таблица: vulnerable_users</strong><br>
+                        ├─ id (INTEGER)<br>
+                        ├─ username (TEXT)<br>
+                        ├─ password (TEXT)<br>
+                        ├─ role (TEXT)<br>
+                        └─ secret (TEXT)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Шаблоны лабораторных работ{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>🎨 Шаблоны лабораторных работ</h2>
+        <div>
+            <a href="{{ url_for('admin.import_existing_templates') }}" class="btn btn-warning me-2">
+                <i class="fas fa-download"></i> Импортировать существующие
+            </a>
+            <a href="{{ url_for('admin.admin_lab_template_new') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Создать шаблон
+            </a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if templates %}
+        <div class="row">
+            {% for template in templates %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">{{ template.name }}</h5>
+                            <small class="badge bg-light text-dark">ID: {{ template.id }}</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">{{ template.description or 'Без описания' }}</p>
+
+                        <div class="mb-2">
+                            <strong>Тип:</strong>
+                            <span class="badge bg-info">{{ template.template_type }}</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <strong>Используется в лабах:</strong>
+                            <span class="badge bg-secondary">{{ template.labs.count() }}</span>
+                            {% if template.labs.count() > 0 %}
+                                <small class="text-muted d-block">
+                                    {% for lab in template.labs.limit(3) %}
+                                        {{ lab.title }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                    {% if template.labs.count() > 3 %}...{% endif %}
+                                </small>
+                            {% endif %}
+                        </div>
+
+                        <div class="btn-group-vertical w-100" role="group">
+                            <div class="btn-group btn-group-sm mb-2" role="group">
+                                <a href="{{ url_for('admin.admin_lab_template_edit', id=template.id) }}"
+                                   class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Редактировать
+                                </a>
+                                <a href="{{ url_for('admin.admin_lab_template_preview', id=template.id) }}"
+                                   class="btn btn-info" target="_blank">
+                                    <i class="fas fa-eye"></i> Просмотр
+                                </a>
+                            </div>
+
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-warning" onclick="duplicateTemplate({{ template.id }})">
+                                    <i class="fas fa-copy"></i> Дублировать
+                                </button>
+                                <button class="btn btn-danger"
+                                        onclick="deleteTemplate({{ template.id }}, '{{ template.name }}', {{ template.labs.count() }})"
+                                        {% if template.labs.count() > 0 %}
+                                        title="Нельзя удалить шаблон, используемый в лабораториях"
+                                        disabled
+                                        {% endif %}>
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer text-muted small">
+                        <div class="d-flex justify-content-between">
+                            <span>Создан: {{ template.created_at.strftime('%d.%m.%Y') if template.created_at else 'Неизвестно' }}</span>
+                            <span>Изменён: {{ template.updated_at.strftime('%d.%m.%Y') if template.updated_at else 'Никогда' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-3x mb-3"></i>
+            <h5>Шаблонов пока нет</h5>
+            <p class="mb-3">Создайте первый шаблон или импортируйте существующие</p>
+            <div>
+                <a href="{{ url_for('admin.admin_lab_template_new') }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus"></i> Создать шаблон
+                </a>
+                <a href="{{ url_for('admin.import_existing_templates') }}" class="btn btn-warning">
+                    <i class="fas fa-download"></i> Импортировать
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Модальное окно для подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы действительно хотите удалить шаблон "<span id="templateName"></span>"?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Это действие нельзя отменить!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Форма для дублирования (скрытая) -->
+<form id="duplicateForm" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="duplicate">
+    <input type="hidden" name="template_id" id="duplicateTemplateId">
+</form>
+
+<script>
+function duplicateTemplate(templateId) {
+    if (confirm('Создать копию этого шаблона?')) {
+        document.getElementById('duplicateTemplateId').value = templateId;
+        document.getElementById('duplicateForm').action = '{{ url_for("admin.admin_lab_templates") }}';
+        document.getElementById('duplicateForm').submit();
+    }
+}
+
+function deleteTemplate(templateId, templateName, labsCount) {
+    if (labsCount > 0) {
+        alert('Нельзя удалить шаблон, который используется в лабораториях!');
+        return;
+    }
+
+    document.getElementById('templateName').textContent = templateName;
+    document.getElementById('deleteForm').action = '{{ url_for("admin.delete_lab_template", id=0) }}'.replace('0', templateId);
+
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Автоскрытие алертов
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert:not(.alert-info)');
+        alerts.forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-group-vertical .btn-group {
+    width: 100%;
+}
+
+.btn-group-vertical .btn-group .btn {
+    flex: 1;
+}
+
+.card-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+</style>
+{% endblock %}

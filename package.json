@@ -1,0 +1,15 @@
+{
+  "name": "ds_py",
+  "version": "1.0.0",
+  "description": "Dark School Security Learning Platform",
+  "scripts": {
+    "build": "npm run obfuscate:misc && npm run obfuscate:tasks",
+    "obfuscate:misc": "javascript-obfuscator src/misc.js --output static/gen/misc.obf.js --config obfuscator.config.json",
+    "obfuscate:tasks": "javascript-obfuscator src/tasks.js --output static/gen/tasks.obf.js --config obfuscator.config.json",
+    "clean": "rimraf static/gen/*.js"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.0",
+    "rimraf": "^5.0.5"
+  }
+}

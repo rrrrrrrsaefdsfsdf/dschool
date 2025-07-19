@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Админка — Контакты куратора{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Контакты куратора</h2>
+    <a class="btn btn-success mb-3" href="{{ url_for('admin.new_curator_contact') }}">Добавить контакт</a>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button aria-label="Закрыть" class="btn-close" data-bs-dismiss="alert" type="button"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    {% if contacts %}
+    <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+            <th>Тип</th>
+            <th>Контакт</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for contact in contacts %}
+        <tr>
+            <td>{{ contact.type }}</td>
+            <td>{{ contact.value }}</td>
+            <td>
+                <a class="btn btn-primary btn-sm" href="{{ url_for('admin.edit_curator_contact', id=contact.id) }}">Редактировать</a>
+                <form action="{{ url_for('admin.delete_curator_contact', id=contact.id) }}" method="post"
+                      onsubmit="return confirm('Удалить контакт?');" style="display:inline-block;">
+                    <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Контакты отсутствуют.</p>
+    {% endif %}
+</div>
+{% endblock %}

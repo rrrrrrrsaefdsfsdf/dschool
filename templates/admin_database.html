@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Админка — Управление базой данных{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-database"></i> Управление базой данных</h2>
+        <div class="alert alert-danger p-2">
+            <small><i class="fas fa-exclamation-triangle"></i> Опасная зона!</small>
+        </div>
+    </div>
+
+    <!-- Статистика БД -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Статистика данных</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="text-primary">{{ stats.users }}</h4>
+                            <small>Пользователи</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-success">{{ stats.tasks }}</h4>
+                            <small>Задачи</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-danger">{{ stats.labs }}</h4>
+                            <small>Лабы</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="text-warning">{{ stats.task_progress }}</h4>
+                            <small>Прогресс задач</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-info">{{ stats.lab_progress }}</h4>
+                            <small>Прогресс лаб</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-secondary">{{ stats.contacts }}</h4>
+                            <small>Контакты</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-file"></i> Файлы баз данных</h5>
+                </div>
+                <div class="card-body">
+                    {% for db_file in db_files %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><code>{{ db_file.name }}</code></span>
+                        <span class="badge bg-secondary">{{ db_file.size }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash сообщения -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Полная очистка -->
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+            <h5><i class="fas fa-broom"></i> Очистка базы данных</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle"></i> ВНИМАНИЕ!</h6>
+                <p class="mb-0">Эта операция удалит ВСЕ данные из базы (кроме вашего аккаунта). Это действие необратимо!</p>
+            </div>
+
+            <form method="post" action="{{ url_for('admin.clear_all_database') }}" onsubmit="return confirmDeletion()">
+                <div class="mb-3">
+                    <label for="confirmation" class="form-label">
+                        <strong>Для подтверждения введите: <code>DELETE ALL DATA</code></strong>
+                    </label>
+                    <input type="text" class="form-control" name="confirmation" id="confirmation" required
+                           placeholder="DELETE ALL DATA">
+                </div>
+                <button type="submit" class="btn btn-danger w-100" disabled id="deleteBtn">
+                    <i class="fas fa-trash"></i> ОЧИСТИТЬ БАЗУ ДАННЫХ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Навигация -->
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад в панель управления
+        </a>
+    </div>
+</div>
+
+<script>
+document.getElementById('confirmation').addEventListener('input', function() {
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (this.value === 'DELETE ALL DATA') {
+        deleteBtn.disabled = false;
+        deleteBtn.classList.remove('btn-danger');
+        deleteBtn.classList.add('btn-outline-danger');
+    } else {
+        deleteBtn.disabled = true;
+        deleteBtn.classList.remove('btn-outline-danger');
+        deleteBtn.classList.add('btn-danger');
+    }
+});
+
+function confirmDeletion() {
+    return confirm('ВЫ УВЕРЕНЫ? Это удалит ВСЕ данные!\n\nЭто действие нельзя отменить!');
+}
+</script>
+{% endblock %}

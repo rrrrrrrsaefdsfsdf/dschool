@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Админка — Список задач{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-tasks"></i> Управление задачами</h2>
+        <a class="btn btn-primary" href="{{ url_for('admin.admin_tasks_new') }}">
+            <i class="fas fa-plus"></i> Создать новую задачу
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Статистика задач</h5>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="text-primary">{{ tasks|selectattr('type', 'equalto', 'Теория')|list|length }}</h3>
+                            <small>Теория</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-success">{{ tasks|selectattr('type', 'equalto', 'Практика')|list|length }}</h3>
+                            <small>Практика</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">⚡ Быстрые действия</h5>
+                    <a class="btn btn-warning btn-sm me-2 mb-2" href="{{ url_for('admin.admin_answers') }}">
+                        <i class="fas fa-clipboard-check"></i> Проверить ответы
+                    </a>
+                    <a class="btn btn-info btn-sm mb-2" href="{{ url_for('admin.admin_labs') }}">
+                        <i class="fas fa-flask"></i> Лабораторные работы
+                    </a>
+                    <a class="btn btn-success btn-sm me-2 mb-2" href="{{ url_for('admin.init_test_tasks') }}">
+                      <i class="fas fa-magic"></i> Создать тестовые задачи
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="d-flex align-items-center gap-3">
+                <label for="taskTypeSelect" class="form-label mb-0">Фильтр по типу:</label>
+                <select id="taskTypeSelect" name="type" class="form-select w-auto" onchange="this.form.submit()">
+                    <option value="Теория" {% if task_type == 'Теория' %}selected{% endif %}>📖 Теория</option>
+                    <option value="Практика" {% if task_type == 'Практика' %}selected{% endif %}>💻 Практика</option>
+                </select>
+                <span class="badge bg-secondary ms-auto">{{ tasks|length }} задач</span>
+            </form>
+        </div>
+        <div class="card-body">
+            {% if tasks %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Заголовок</th>
+                        <th>Тип</th>
+                        <th>Описание</th>
+                        <th>Дата создания</th>
+                        <th style="width: 200px;">Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for task in tasks %}
+                    <tr>
+                        <td><span class="badge bg-primary">#{{ task.id }}</span></td>
+                        <td><strong>{{ task.title }}</strong></td>
+                        <td>
+                            {% if task.type == 'Теория' %}
+                                <span class="badge bg-info"><i class="fas fa-book"></i> {{ task.type }}</span>
+                            {% else %}
+                                <span class="badge bg-success"><i class="fas fa-laptop-code"></i> {{ task.type }}</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ task.description|truncate(80) }}</small></td>
+                        <td><small>{{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.admin_tasks_edit', id=task.id) }}" title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.admin_tasks_delete', id=task.id) }}" method="post"
+                                      onsubmit="return confirm('Удалить задачу {{ task.title }}?');" style="display:inline-block;">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>Задач пока нет</h5>
+                <p class="text-muted">Создайте первую задачу для студентов</p>
+                <a class="btn btn-primary" href="{{ url_for('admin.admin_tasks_new') }}">
+                    <i class="fas fa-plus"></i> Создать задачу
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад в панель управления
+        </a>
+    </div>
+</div>
+{% endblock %}

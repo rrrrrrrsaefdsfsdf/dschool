@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Ошибка безопасности — CSRF{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading">Ошибка безопасности</h4>
+        <p>Произошла ошибка проверки безопасности (CSRF токен отсутствует или недействителен).</p>
+        <hr>
+        <p>{{ reason }}</p>
+        <a class="btn btn-primary" href="{{ url_for('index') }}">Вернуться на главную</a>
+    </div>
+</div>
+{% endblock %}

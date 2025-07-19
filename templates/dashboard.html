@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block title %}Dark.school | Личный кабинет{% endblock %}
+{% block content %}
+<div class="container mt-5" style="max-width: 1200px;">
+  <div class="card shadow-sm p-4 mb-4">
+    <h2>Привет, {{ user.username }}!</h2>
+    <p>Добро пожаловать в личный кабинет.</p>
+    {% if user.is_admin and stats %}
+      <hr>
+      <h4>Админ-панель — Статистика</h4>
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <h6>👥 Пользователи</h6>
+          <ul class="list-group mb-3">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Всего пользователей
+              <span class="badge bg-primary rounded-pill">{{ stats.total_users }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Администраторов
+              <span class="badge bg-success rounded-pill">{{ stats.admin_count }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Новых за 24 часа
+              <span class="badge bg-info rounded-pill">{{ stats.new_users_day }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Активных за 7 дней
+              <span class="badge bg-warning rounded-pill">{{ stats.active_users_week }}</span>
+            </li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <h6>📚 Контент</h6>
+          <ul class="list-group mb-3">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Всего задач
+              <span class="badge bg-primary rounded-pill">{{ stats.total_tasks }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Лабораторных работ
+              <span class="badge bg-danger rounded-pill">{{ stats.total_labs }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Непроверенных ответов
+              <span class="badge bg-warning rounded-pill">{{ answers|length }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Контактов куратора
+              <span class="badge bg-info rounded-pill">{{ curator_contacts|length if curator_contacts else 0 }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              Всего записей в БД
+              <span class="badge bg-dark rounded-pill">{{ (stats.total_users + stats.total_tasks + stats.total_labs) }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <h4>🚀 Быстрые действия</h4>
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h6>📝 Задачи</h6>
+            </div>
+            <div class="card-body">
+              <a class="btn btn-primary btn-sm mb-2 w-100" href="{{ url_for('admin.admin_tasks') }}">
+                <i class="fas fa-tasks"></i> Управление задачами
+              </a>
+              <a class="btn btn-warning btn-sm mb-2 w-100" href="{{ url_for('admin.admin_answers') }}">
+                <i class="fas fa-clipboard-check"></i> Проверка ответов
+              </a>
+              <a class="btn btn-success btn-sm w-100" href="{{ url_for('admin.init_test_tasks') }}">
+                <i class="fas fa-book"></i> Создать теоретические задачи
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h6>🧪 Лаборатории</h6>
+            </div>
+            <div class="card-body">
+              <a class="btn btn-danger btn-sm mb-2 w-100" href="{{ url_for('admin.admin_labs') }}">
+                <i class="fas fa-flask"></i> Управление лабами
+              </a>
+              <a class="btn btn-warning btn-sm mb-2 w-100" href="{{ url_for('admin.init_labs_data') }}">
+                <i class="fas fa-vial"></i> Создать практические лабы
+              </a>
+              <a class="btn btn-secondary btn-sm w-100" href="{{ url_for('admin.init_vulnerable_db') }}">
+                <i class="fas fa-database"></i> Инициализировать БД
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h6>🛠️ Система</h6>
+            </div>
+            <div class="card-body">
+                <a class="btn btn-dark btn-sm mb-2 w-100" href="{{ url_for('admin.admin_database') }}">
+                    <i class="fas fa-database"></i> Управление БД
+                </a>
+                <div class="mb-3">
+                    <a href="{{ url_for('admin.admin_users_new') }}" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Создать пользователя
+                    </a>
+                </div>
+            </div>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-header">
+              <h6>📞 Контакты</h6>
+            </div>
+            <div class="card-body">
+              <a class="btn btn-success btn-sm mb-2 w-100" href="{{ url_for('admin.curator_contacts') }}">
+                <i class="fas fa-address-book"></i> Контакты куратора
+              </a>
+              <a class="btn btn-outline-success btn-sm w-100" href="{{ url_for('admin.new_curator_contact') }}">
+                <i class="fas fa-plus"></i> Добавить контакт
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h4>👥 Управление пользователями</h4>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button aria-label="Закрыть" class="btn-close" data-bs-dismiss="alert" type="button"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% if users %}
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Логин</th>
+                <th>Статус</th>
+                <th>Задач решено</th>
+                <th>Лаб решено</th>
+                <th>Регистрация</th>
+                <th>Последний вход</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in users %}
+                {% set user_lab_count = solved_lab_counts[u.id] if solved_lab_counts and u.id in solved_lab_counts else 0 %}
+                <tr {% if u.is_admin %}class="table-warning"{% endif %}>
+                  <td><span class="badge bg-secondary">#{{ u.id }}</span></td>
+                  <td>
+
+                    <strong>{{ u.username }}</strong>
+                    {% if u.id == user.id %}<small class="text-primary">(это вы)</small>{% endif %}
+                  </td>
+                  <td>
+                    {% if u.is_admin %}
+                      <span class="badge bg-success"><i class="fas fa-crown"></i> Админ</span>
+                    {% else %}
+                      <span class="badge bg-secondary"><i class="fas fa-user"></i> Пользователь</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge bg-primary">{{ solved_counts[u.id] if solved_counts and u.id in solved_counts else 0 }}</span>
+                  </td>
+                  <td>
+                    <span class="badge bg-danger">{{ user_lab_count }}</span>
+                  </td>
+                  <td><small class="text-muted">{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                  <td><small class="text-muted">{{ u.last_login.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                  <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                      <form method="post" action="{{ url_for('admin.manage_users') }}" style="display:inline-block;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="user_id" type="hidden" value="{{ u.id }}">
+                        <input name="action" type="hidden" value="toggle_admin">
+                        <button
+                          type="submit"
+                          class="btn btn-outline-primary btn-sm"
+                          {% if u.id == user.id %}disabled title="Нельзя изменить свои права"{% endif %}
+                        >
+                          <i class="fas fa-{{ 'user-minus' if u.is_admin else 'user-plus' }}"></i>
+                        </button>
+                      </form>
+                      <form method="post" action="{{ url_for('admin.manage_users') }}" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');" style="display:inline-block;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="user_id" type="hidden" value="{{ u.id }}">
+                        <input name="action" type="hidden" value="delete">
+                        <button
+                          type="submit"
+                          class="btn btn-outline-danger btn-sm"
+                          {% if u.id == user.id %}disabled title="Нельзя удалить себя"{% endif %}
+                        >
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i> Пользователей пока нет.
+        </div>
+      {% endif %}
+      {% if curator_contacts %}
+      <h4 class="mt-4">📞 Контакты куратора</h4>
+      <div class="row">
+        {% for contact in curator_contacts %}
+        <div class="col-md-4 mb-2">
+          <div class="card border-success">
+            <div class="card-body p-3">
+              <h6 class="card-title mb-2">
+                <i class="fas fa-user-tie me-2"></i>
+                {{ contact.name if contact.name else 'Куратор' }}
+              </h6>
+              <div class="contact-details">
+                {% if contact.telegram %}
+                <p class="card-text small mb-1">
+                  <i class="fab fa-telegram me-1"></i>
+                  @{{ contact.telegram }}
+                </p>
+                {% endif %}
+                {% if contact.email %}
+                <p class="card-text small mb-2">
+                  <i class="fas fa-envelope me-1"></i>
+                  {{ contact.email }}
+                </p>
+                {% endif %}
+                {% if not contact.telegram and not contact.email %}
+                <p class="card-text small text-muted mb-2">
+                  <i class="fas fa-exclamation-circle me-1"></i>
+                  Контакты не указаны
+                </p>
+                {% endif %}
+              </div>
+              <div class="btn-group w-100" role="group">
+                <a href="{{ url_for('admin.edit_curator_contact', contact_id=contact.id) }}" class="btn btn-outline-primary btn-sm">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form method="POST" action="{{ url_for('admin.delete_curator_contact', contact_id=contact.id) }}" style="display:inline-block;" onsubmit="return confirm('Удалить контакт?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="row mt-4">
+        <div class="col-md-12">
+          <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+              <h5><i class="fas fa-chart-line"></i> Ваша статистика</h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="text-center mb-3">
+                    <h6><i class="fas fa-tasks"></i> Задачи</h6>
+                    <p class="mb-1">Решено <strong>{{ solved_count }}</strong> из <strong>{{ total_tasks }}</strong></p>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="text-center mb-3">
+                    <h6><i class="fas fa-flask"></i> Лабораторные работы</h6>
+                    <p class="mb-1">Решено <strong>{{ solved_labs_count }}</strong> из <strong>{{ total_labs }}</strong></p>
+                  </div>
+                </div>
+              </div>
+              {% set total_items = total_tasks + total_labs %}
+              {% set solved_items = solved_count + solved_labs_count %}
+              <div class="text-center">
+                <h6 class="mt-3">Общий прогресс: {{ solved_items }}/{{ total_items }}</h6>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-md-4">
+          <a class="btn btn-primary w-100 mb-2" href="{{ url_for('index') }}">
+            <i class="fas fa-book"></i> Перейти к задачам
+          </a>
+        </div>
+        <div class="col-md-4">
+          <a class="btn btn-info w-100 mb-2" href="{{ url_for('curator') }}">
+            <i class="fas fa-headset"></i> Связаться с куратором
+          </a>
+        </div>
+      </div>
+    {% endif %}
+    <hr class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <small class="text-muted">
+        <i class="fas fa-clock"></i> Последний вход: {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+      </small>
+      <a class="btn btn-outline-danger" href="{{ url_for('auth.logout') }}">
+        <i class="fas fa-sign-out-alt"></i> Выйти
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+.card {
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0,0,0,.075);
+}
+
+.btn-group-sm .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.contact-details {
+  min-height: 50px;
+}
+</style>
+{% endblock %}
