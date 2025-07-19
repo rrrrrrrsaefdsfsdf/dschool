@@ -37,7 +37,7 @@ goto menu
 cls
 echo 🚀 ПОЛНЫЙ ДЕПЛОЙ
 echo ════════════════════════════════════════
-cd /d ""C:\Users\mbpsc\Documents\prod\ds_py""
+cd /d "C:\Users\mbpsc\Documents\prod\ds_py"
 call :git_push
 call :deploy_server
 echo.
@@ -49,7 +49,7 @@ goto menu
 cls
 echo 📤 ОТПРАВКА В GIT
 echo ════════════════════════════════════════
-cd /d ""C:\Users\mbpsc\Documents\prod\ds_py""
+cd /d "C:\Users\mbpsc\Documents\prod\ds_py"
 call :git_push
 pause
 goto menu
