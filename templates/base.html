@@ -28,11 +28,7 @@
       <div class="company-name">Dark.school | Practice</div>
     </a>
   </div>
-  <button class="navbar-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-links">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
+  
   <nav class="nav-links" id="nav-links">
     <a href="{{ url_for('index') }}">
         <i class="fas fa-home"></i> Главная
@@ -107,14 +103,17 @@
         <a href="{{ url_for('auth.login') }}">
             <i class="fas fa-sign-in-alt"></i> Вход
         </a>
-        <!-- <a href="{{ url_for('auth.register') }}">
-            <i class="fas fa-user-plus"></i> Регистрация
-        </a> -->
         <a href="{{ url_for('course') }}">
             <i class="fas fa-graduation-cap"></i> Курсы
         </a>
     {% endif %}
   </nav>
+  
+  <button class="navbar-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-links">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
 </div>
 <main>
     {% block content %}
@@ -140,10 +139,132 @@
     </div>
 </footer>
 <style>
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body::-webkit-scrollbar {
+    width: 8px;
+}
+
+body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.alert {
+    margin-bottom: 0;
+    border-radius: 0;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #333;
+    color: white;
+    position: relative;
+}
+
+main {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.navbar-left {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 1001;
+}
+
+.company-gif {
+    height: 40px;
+    margin-right: 10px;
+}
+
+.company-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.navbar-toggle {
+    display: none;
+    flex-direction: column;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    z-index: 1001;
+    position: relative;
+    width: 35px;
+    height: 35px;
+    justify-content: center;
+    align-items: center;
+}
+
+.navbar-toggle span {
+    width: 22px;
+    height: 2px;
+    background-color: white;
+    margin: 2px 0;
+    transition: 0.3s;
+    display: block;
+    transform-origin: center;
+}
+
+.navbar-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.navbar-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.navbar-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.nav-links a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
 .nav-dropdown {
     position: relative;
     display: inline-block;
 }
+
 .nav-dropdown-toggle {
     display: flex !important;
     align-items: center;
@@ -153,14 +274,16 @@
     border-radius: 4px;
     transition: background-color 0.3s;
 }
+
 .nav-dropdown-toggle:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
 .nav-dropdown-menu {
     display: none;
     position: absolute;
     top: 100%;
-    left: 0;
+    right: 0;
     min-width: 220px;
     background-color: #ffffff;
     border: 1px solid #e0e0e0;
@@ -169,9 +292,11 @@
     z-index: 1000;
     overflow: hidden;
 }
+
 .nav-dropdown:hover .nav-dropdown-menu {
     display: block;
 }
+
 .nav-dropdown-menu a {
     display: block !important;
     padding: 10px 16px;
@@ -181,63 +306,224 @@
     border-bottom: 1px solid #f0f0f0;
     transition: background-color 0.3s;
 }
+
 .nav-dropdown-menu a:last-child {
     border-bottom: none;
 }
+
 .nav-dropdown-menu a:hover {
     background-color: #f8f9fa;
     color: #007bff !important;
 }
+
 .nav-dropdown-menu .dropdown-divider {
     margin: 0;
     border-color: #e9ecef;
 }
+
 .nav-dropdown-menu a[href*="admin"] {
     border-left: 3px solid #007bff;
 }
+
 .nav-dropdown-menu a[href*="/admin/database"] {
     border-left: 3px solid #28a745;
 }
+
 .nav-dropdown-menu a[href*="template"] {
     border-left: 3px solid #6f42c1;
 }
+
 .logout-link {
     color: #dc3545 !important;
     margin-left: 10px;
 }
+
 .logout-link:hover {
     background-color: rgba(220, 53, 69, 0.1) !important;
 }
-@media (max-width: 768px) {
-    .nav-dropdown-menu {
-        position: static;
-        display: none;
-        width: 100%;
-        box-shadow: none;
-        border: none;
-        background-color: rgba(255, 255, 255, 0.95);
-        margin-top: 10px;
-    }
-    .nav-dropdown:hover .nav-dropdown-menu,
-    .nav-dropdown.active .nav-dropdown-menu {
-        display: block;
-    }
-}
+
 .nav-links i {
     margin-right: 6px;
     width: 16px;
     text-align: center;
 }
+
+@media (max-width: 768px) {
+    .navbar {
+        position: relative;
+    }
+    
+    .navbar-toggle {
+        display: flex;
+        order: 3;
+    }
+    
+    .navbar-left {
+        order: 1;
+    }
+    
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 280px;
+        background-color: #333;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.2);
+        max-height: 70vh;
+        overflow-y: auto;
+        z-index: 1000;
+        border-radius: 0 0 0 8px;
+        order: 2;
+    }
+    
+    .nav-links.active {
+        display: flex;
+    }
+    
+    .nav-links a {
+        padding: 12px 16px;
+        margin: 2px 0;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .nav-dropdown {
+        width: 100%;
+    }
+    
+    .nav-dropdown-toggle {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .nav-dropdown-menu {
+        position: static;
+        display: none;
+        width: 100%;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(255, 255, 255, 0.95);
+        margin-top: 5px;
+        border-radius: 4px;
+        right: auto;
+    }
+    
+    .nav-dropdown:hover .nav-dropdown-menu {
+        display: none;
+    }
+    
+    .nav-dropdown.active .nav-dropdown-menu {
+        display: block;
+    }
+    
+    .nav-dropdown-menu a {
+        padding: 8px 20px !important;
+        font-size: 13px;
+    }
+    
+    .company-name {
+        font-size: 1rem;
+    }
+    
+    .company-gif {
+        height: 35px;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar {
+        padding: 0.8rem;
+    }
+    
+    .company-name {
+        font-size: 0.9rem;
+    }
+    
+    .company-gif {
+        height: 30px;
+        margin-right: 8px;
+    }
+    
+    .nav-links {
+        padding: 0.8rem;
+        max-height: 60vh;
+        width: 260px;
+    }
+    
+    .nav-links a {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .nav-dropdown-menu a {
+        padding: 6px 16px !important;
+        font-size: 12px;
+    }
+}
+
+.nav-links::-webkit-scrollbar {
+    width: 4px;
+}
+
+.nav-links::-webkit-scrollbar-track {
+    background: #333;
+}
+
+.nav-links::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 2px;
+}
+
+.nav-links::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+.nav-links {
+    scrollbar-width: thin;
+    scrollbar-color: #666 #333;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const navbarToggle = document.querySelector('.navbar-toggle');
+    const navLinks = document.querySelector('.nav-links');
+    
+    if (navbarToggle && navLinks) {
+        navbarToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navLinks.classList.toggle('active');
+            this.classList.toggle('active');
+            
+            const isExpanded = this.classList.contains('active');
+            this.setAttribute('aria-expanded', isExpanded);
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.navbar')) {
+                navLinks.classList.remove('active');
+                navbarToggle.classList.remove('active');
+                navbarToggle.setAttribute('aria-expanded', 'false');
+                
+                document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                    dropdown.classList.remove('active');
+                });
+            }
+        });
+    }
+
     const dropdownToggles = document.querySelectorAll('.nav-dropdown-toggle');
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             if (window.innerWidth <= 768) {
                 e.preventDefault();
+                e.stopPropagation();
                 const dropdown = this.closest('.nav-dropdown');
                 dropdown.classList.toggle('active');
+                
                 dropdownToggles.forEach(otherToggle => {
                     if (otherToggle !== this) {
                         otherToggle.closest('.nav-dropdown').classList.remove('active');
@@ -246,8 +532,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.nav-dropdown')) {
+
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            navLinks.classList.remove('active');
+            navbarToggle.classList.remove('active');
+            navbarToggle.setAttribute('aria-expanded', 'false');
+            
             document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
                 dropdown.classList.remove('active');
             });

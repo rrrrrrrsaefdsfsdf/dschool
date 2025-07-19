@@ -76,10 +76,6 @@
                       </div>
                     </div>
                     <div class="form-help mt-2">
-                      <small class="text-muted">
-                        <i class="fas fa-lightbulb me-1 text-warning"></i>
-                        <strong>Совет:</strong> Подробное описание решения поможет куратору быстрее проверить ваш ответ
-                      </small>
                     </div>
                   </div>
                   <div class="action-buttons-section mb-4">
@@ -166,7 +162,6 @@
     </div>
   </div>
 </div>
-
 <div class="modal fade" id="labHintsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content shadow-lg">
@@ -183,17 +178,14 @@
     </div>
   </div>
 </div>
-
 <style>
 .bg-gradient-primary {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
 }
-
 .task-type-selector {
   max-width: 400px;
   margin-left: auto;
 }
-
 .task-type-btn {
   border: 2px solid rgba(255,255,255,0.3) !important;
   background: rgba(0,0,0,0.15) !important;
@@ -203,38 +195,34 @@
   position: relative;
   overflow: hidden;
 }
-
 .task-type-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0,0,0,0.2);
   border-color: rgba(255,255,255,0.6) !important;
 }
-
 .task-type-btn.active {
   background: rgba(255,255,255,0.25) !important;
   border-color: #fff !important;
   box-shadow: 0 6px 18px rgba(0,0,0,0.2);
 }
-
 .tasks-list-container::-webkit-scrollbar {
   width: 6px;
 }
-
 .tasks-list-container::-webkit-scrollbar-track {
   background: #f1f3f4;
   border-radius: 3px;
 }
-
 .tasks-list-container::-webkit-scrollbar-thumb {
   background: linear-gradient(45deg, #6366f1, #8b5cf6);
   border-radius: 3px;
 }
-
 .task-description {
   line-height: 1.6;
   font-size: 1rem;
 }
-
+.task-description-wrapper.hidden-for-practice {
+  display: none !important;
+}
 .answer-textarea {
   border: 2px solid #e5e7eb;
   border-radius: 8px;
@@ -245,13 +233,11 @@
   resize: vertical;
   min-height: 150px;
 }
-
 .answer-textarea:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   outline: none;
 }
-
 .custom-submit-btn {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%);
   border: none;
@@ -261,34 +247,28 @@
   transition: all 0.3s ease;
   color: white;
 }
-
 .custom-submit-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #047857 0%, #059669 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   color: white;
 }
-
 .custom-submit-btn:disabled {
   background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
   cursor: not-allowed;
   transform: none;
   opacity: 0.7;
 }
-
 .custom-submit-btn.loading .btn-icon {
   animation: rotate 1s linear infinite;
 }
-
 .custom-submit-btn.submitted {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
-
 @keyframes rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
 .submission-status-wrapper {
   padding: 1rem;
   border-radius: 8px;
@@ -296,25 +276,21 @@
   margin-bottom: 1rem;
   font-weight: 500;
 }
-
 .submission-status-wrapper.pending {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   border-color: #f59e0b;
   color: #92400e;
 }
-
 .submission-status-wrapper.approved {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   border-color: #10b981;
   color: #065f46;
 }
-
 .submission-status-wrapper.rejected {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   border-color: #ef4444;
   color: #991b1b;
 }
-
 .list-group-item {
   border: 1px solid #e5e7eb;
   margin-bottom: 0.5rem;
@@ -322,63 +298,96 @@
   transition: all 0.2s ease;
   padding: 12px 16px;
 }
-
 .list-group-item:hover {
   background-color: #f8fafc;
   border-color: #6366f1;
   transform: translateX(3px);
 }
-
 .list-group-item.active {
   background-color: #6366f1;
   border-color: #6366f1;
   color: white;
 }
-
 .empty-icon-container {
   position: relative;
   display: inline-block;
 }
-
 .welcome-card {
   transition: all 0.3s ease;
   border-width: 2px;
 }
-
 .welcome-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 12px 25px rgba(0,0,0,0.1);
 }
-
 .btn-welcome-action {
   padding: 8px 16px;
   font-size: 0.9rem;
   border-radius: 6px;
 }
-
-/* Уменьшенные отступы для мобильных устройств */
 @media (max-width: 768px) {
   .task-type-btn {
     padding: 10px 12px;
     font-size: 0.85rem;
   }
-
   .tasks-list-container {
     max-height: 40vh !important;
   }
-
   .custom-submit-btn {
     padding: 10px 20px;
     font-size: 0.9rem;
   }
-
   .welcome-card .card-body {
     padding: 1.5rem;
   }
 }
 </style>
-{% endblock %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnPractice = document.getElementById('btnPractice');
+    const btnTheory = document.getElementById('btnTheory');
+    const taskDescriptionWrapper = document.querySelector('.task-description-wrapper');
+    
+    btnPractice.addEventListener('click', function() {
+        this.classList.add('active');
+        btnTheory.classList.remove('active');
+        
+        if (taskDescriptionWrapper) {
+            taskDescriptionWrapper.classList.add('hidden-for-practice');
+        }
+    });
+    
+    btnTheory.addEventListener('click', function() {
+        this.classList.add('active');
+        btnPractice.classList.remove('active');
+        
+        if (taskDescriptionWrapper) {
+            taskDescriptionWrapper.classList.remove('hidden-for-practice');
+        }
+    });
+});
 
+function switchToPractice() {
+    document.getElementById('btnPractice').classList.add('active');
+    document.getElementById('btnTheory').classList.remove('active');
+    
+    const taskDescription = document.querySelector('.task-description-wrapper');
+    if (taskDescription) {
+        taskDescription.classList.add('hidden-for-practice');
+    }
+}
+
+function switchToTheory() {
+    document.getElementById('btnTheory').classList.add('active');
+    document.getElementById('btnPractice').classList.remove('active');
+    
+    const taskDescription = document.querySelector('.task-description-wrapper');
+    if (taskDescription) {
+        taskDescription.classList.remove('hidden-for-practice');
+    }
+}
+</script>
+{% endblock %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{{ url_for('static', filename='tasks.js') }}"></script>

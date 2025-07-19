@@ -139,20 +139,23 @@ def preview_template_file(filename):
 @admin_required
 def admin_labs_edit(id):
     lab = Lab.query.get_or_404(id)
-    form = LabForm(obj=lab)
-    if form.validate_on_submit():
-        lab.title = form.title.data
-        lab.description = form.description.data
-        lab.difficulty = form.difficulty.data
-        lab.endpoint = form.endpoint.data
-        lab.flag = form.flag.data
-        lab.type = form.type.data
-        lab.handler_type = form.handler_type.data
-        lab.template_id = form.template_id.data if form.template_id.data != 0 else None
-        db.session.commit()
-        flash('Лабораторная работа обновлена', 'success')
-        return redirect(url_for('admin.admin_labs'))
-    return render_template('admin_lab_form.html', form=form, title='Редактировать лабу')
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        difficulty = request.form.get('difficulty')
+        
+        if title and description and difficulty:
+            lab.title = title
+            lab.description = description
+            lab.difficulty = difficulty
+            db.session.commit()
+            flash('Лабораторная работа обновлена', 'success')
+            return redirect(url_for('admin.admin_labs'))
+        else:
+            flash('Заполните все поля', 'error')
+    
+    return render_template('admin_lab_form.html', lab=lab, title='Редактировать лабу')
 
 
 @admin_bp.route('/labs/<int:id>/delete', methods=['POST'])

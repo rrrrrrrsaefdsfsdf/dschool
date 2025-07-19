@@ -1,34 +1,260 @@
 {% extends "base.html" %}
 {% block title %}Dark.school | Вход{% endblock %}
 {% block content %}
-<div class="container mt-5" style="max-width: 400px;">
-    <h2 class="mb-4 text-center">Вход</h2>
-    {% if error %}
-    <div class="alert alert-danger" role="alert">
-        {{ error }}
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        padding: 20px;
+    }
+    
+    .login-card {
+        background: hsl(232, 32%, 15%);
+        border-radius: 8px;
+        padding: 24px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .login-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, hsl(224, 100%, 66%) 0%, hsl(224, 100%, 80%) 50%, hsl(325, 92%, 85%) 100%);
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        color: hsl(233, 7%, 83%);
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 6px;
+        display: block;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 12px 14px;
+        background: hsl(229, 26%, 21%);
+        border: 1px solid hsl(229, 14%, 15%);
+        border-radius: 6px;
+        color: hsl(233, 7%, 83%);
+        font-size: 14px;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: hsl(224, 100%, 66%);
+        background: hsl(229, 26%, 21%);
+        box-shadow: 0 0 0 3px hsla(224, 100%, 66%, 0.15);
+    }
+    
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 24px;
+        user-select: none;
+        cursor: pointer;
+    }
+    
+    .custom-checkbox {
+        position: relative;
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .custom-checkbox input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+    
+    .checkmark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 18px;
+        width: 18px;
+        background: hsl(229, 26%, 21%);
+        border: 2px solid hsl(229, 14%, 15%);
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .custom-checkbox:hover input ~ .checkmark {
+        border-color: hsl(224, 100%, 66%);
+    }
+    
+    .custom-checkbox input:checked ~ .checkmark {
+        background: hsl(224, 100%, 66%);
+        border-color: hsl(224, 100%, 66%);
+    }
+    
+    .checkmark::after {
+        content: "";
+        position: absolute;
+        display: none;
+        left: 5px;
+        top: 2px;
+        width: 4px;
+        height: 8px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    
+    .custom-checkbox input:checked ~ .checkmark::after {
+        display: block;
+    }
+    
+    .checkbox-label {
+        color: hsl(233, 7%, 83%);
+        font-size: 14px;
+        cursor: pointer;
+    }
+    
+    .form-footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-top: 24px;
+    }
+    
+    .btn-login {
+        background: hsl(229, 14%, 15%);
+        color: hsl(233, 7%, 83%);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        min-width: 90px;
+    }
+    
+    .btn-login:hover:not(:disabled) {
+        background: hsl(229, 14%, 18%);
+        transform: translateY(-1px);
+    }
+    
+    .btn-login:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .error-message {
+        background: hsla(342, 84%, 64%, 0.1);
+        border: 1px solid hsl(342, 84%, 64%);
+        color: hsl(342, 84%, 74%);
+        padding: 12px 14px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+    
+    .field-error {
+        color: hsl(342, 84%, 64%);
+        font-size: 12px;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    @media (max-width: 480px) {
+        .login-container {
+            padding: 10px;
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+        
+        .login-card {
+            padding: 20px 16px;
+            max-width: 100%;
+        }
+        
+        .form-footer {
+            justify-content: center;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 14px 20px;
+        }
+    }
+    
+    @media (max-width: 320px) {
+        .login-card {
+            padding: 16px 12px;
+        }
+        
+        .form-input {
+            padding: 10px 12px;
+        }
+    }
+</style>
+
+<div class="login-container">
+    <div class="login-card">
+        {% if error %}
+        <div class="error-message">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                <label class="form-label">Логин</label>
+                {{ form.username(class="form-input") }}
+                {% for error_msg in form.username.errors %}
+                <span class="field-error">{{ error_msg }}</span>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Пароль</label>
+                {{ form.password(class="form-input") }}
+                {% for error_msg in form.password.errors %}
+                <span class="field-error">{{ error_msg }}</span>
+                {% endfor %}
+            </div>
+            
+            <label class="checkbox-container" for="{{ form.remember_me.id }}">
+                <div class="custom-checkbox">
+                    {{ form.remember_me() }}
+                    <span class="checkmark"></span>
+                </div>
+                <span class="checkbox-label">Запомнить меня</span>
+            </label>
+            
+            <div class="form-footer">
+                <button type="submit" class="btn-login">ВОЙТИ</button>
+            </div>
+        </form>
     </div>
-    {% endif %}
-    <form method="post" novalidate>
-        {{ form.hidden_tag() }}
-        <div class="mb-3">
-            {{ form.username.label(class="form-label") }}
-            {{ form.username(class="form-control", placeholder="Введите логин") }}
-            {% for error_msg in form.username.errors %}
-            <div class="text-danger small">{{ error_msg }}</div>
-            {% endfor %}
-        </div>
-        <div class="mb-3">
-            {{ form.password.label(class="form-label") }}
-            {{ form.password(class="form-control", placeholder="Введите пароль") }}
-            {% for error_msg in form.password.errors %}
-            <div class="text-danger small">{{ error_msg }}</div>
-            {% endfor %}
-        </div>
-        <div class="mb-3 form-check">
-            {{ form.remember_me(class="form-check-input") }}
-            {{ form.remember_me.label(class="form-check-label") }}
-        </div>
-        <button class="btn btn-primary w-100" type="submit">{{ form.submit.label.text }}</button>
-    </form>
 </div>
 {% endblock %}

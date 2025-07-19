@@ -37,7 +37,6 @@ def universal_lab_handler(lab_path):
         else:
             abort(404)
 
-
 def handle_auth_bypass_lab(lab):
     error = None
     success = False
@@ -63,7 +62,7 @@ def handle_auth_bypass_lab(lab):
                         'id': result[0],
                         'username': result[1],
                         'role': result[3],
-                        'secret': result[4]
+                        'secret': lab.flag
                     }
                     success = True
                 else:
@@ -77,7 +76,7 @@ def handle_auth_bypass_lab(lab):
                            lab=lab,
                            error=error,
                            success=success,
-                           user_data=user_data,  # Изменено с 'user' на 'user_data'
+                           user_data=user_data,
                            query=query)
 
 
@@ -98,19 +97,14 @@ def handle_union_injection_lab(lab):
             cursor.execute(query)
             raw_results = cursor.fetchall()
 
-            # Фильтруем результаты - показываем только свой флаг
             results = []
             for row in raw_results:
                 filtered_row = []
                 for cell in row:
                     if cell and 'FLAG{' in str(cell):
-                        # Показываем только union флаг, остальные скрываем
-                        if 'union' in str(cell).lower():
-                            filtered_row.append(cell)  # Показываем правильный флаг
-                        else:
-                            filtered_row.append('[СКРЫТЫЕ ДАННЫЕ]')  # Скрываем другие флаги
+                        filtered_row.append(lab.flag)
                     else:
-                        filtered_row.append(cell)  # Обычные данные показываем как есть
+                        filtered_row.append(cell)
                 results.append(tuple(filtered_row))
 
         except Exception as e:
@@ -126,6 +120,7 @@ def handle_union_injection_lab(lab):
                            query=query,
                            lab_type=lab_type,
                            str=str)
+
 
 def handle_blind_injection_lab(lab):
     user_id = ''
@@ -143,29 +138,23 @@ def handle_blind_injection_lab(lab):
         else:
             conn = get_lab_db()
             cursor = conn.cursor()
-
-            # Проверяем, что введено
-            print(f"DEBUG: Введенное значение: '{user_id}'")
-
-            # Формируем запрос (НЕБЕЗОПАСНО - для демонстрации уязвимости)
+            
             query = f"SELECT username FROM vulnerable_users WHERE id={user_id}"
 
             try:
-                print(f"DEBUG: Выполняемый запрос: {query}")
                 cursor.execute(query)
                 result = cursor.fetchone()
 
                 if result:
                     exists = True
                     username = result[0]
-                    print(f"DEBUG: Найден пользователь: {username}")
+                    if username == 'admin':
+                        username = lab.flag
                 else:
                     exists = False
-                    print("DEBUG: Пользователь не найден")
 
             except Exception as e:
                 error = f"SQL Error: {str(e)}"
-                print(f"DEBUG: Ошибка SQL: {e}")
                 exists = False
             finally:
                 conn.close()

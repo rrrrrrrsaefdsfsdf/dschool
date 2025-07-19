@@ -42,7 +42,7 @@ class LabForm(FlaskForm):
     endpoint_suffix = StringField('Суффикс эндпоинта', validators=[Optional(), Length(max=100)])
     flag = StringField('Флаг', validators=[DataRequired(), Length(max=200)])
     flag_content = StringField('Содержимое флага', validators=[Optional(), Length(max=200)])
-    type = SelectField('Тип', choices=[('SQL Injection', 'SQL Injection'), ('XSS', 'XSS'), ('Other', 'Другое')])
+    type = SelectField('Тип', choices=[('SQL Injection', 'SQL Injection'),('Other', 'Другое')])
     handler_type = SelectField('Тип обработчика',
                                choices=[
                                    ('auth_bypass', 'Обход аутентификации'),
