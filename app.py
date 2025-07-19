@@ -49,21 +49,13 @@ def create_app():
                             output='gen/packed.%(version)s.css')
         assets.register('css_all', css_bundle)
         
-    
         if app.config.get('USE_OBFUSCATED', False):
-            # На продакшене используем только обфусцированные версии
-            assets.register('js_all', Bundle(
-                'gen/misc.obf.js',
-                'gen/tasks.obf.js',
-                output='gen/packed.js'
-            ))
+            js_bundle = Bundle('gen/misc.obf.js', 'gen/tasks.obf.js',
+                            output='gen/app.%(version)s.js')
         else:
-            # В режиме разработки используем оригиналы
-            assets.register('js_all', Bundle(
-                'misc.js',
-                'tasks.js',
-                output='gen/packed.js'
-            ))
+            js_bundle = Bundle('misc.js', 'tasks.js',
+                            filters='jsmin' if not app.config.get('ASSETS_DEBUG') else None,
+                            output='gen/app.%(version)s.js')
         assets.register('js_all', js_bundle)
 
     from models import User
