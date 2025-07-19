@@ -27,14 +27,11 @@ def clean_gen_folder():
 
 
 def check_source_files():
-    possible_locations = [
-        ('src/misc.js', 'src/tasks.js'),
-        ('static/misc.js', 'static/tasks.js')
-    ]
+    misc_path = 'static/misc.js'
+    tasks_path = 'static/tasks.js'
     
-    for misc_path, tasks_path in possible_locations:
-        if os.path.exists(misc_path) and os.path.exists(tasks_path):
-            return misc_path, tasks_path
+    if os.path.exists(misc_path) and os.path.exists(tasks_path):
+        return misc_path, tasks_path
     
     return None, None
 
@@ -75,11 +72,7 @@ def build_without_obfuscation():
     misc_path, tasks_path = check_source_files()
     if not misc_path:
         print("✗ Исходные JS файлы не найдены!")
-        print("Создание базовых JS файлов...")
-        create_basic_js_files()
-        misc_path, tasks_path = check_source_files()
-        if not misc_path:
-            return False
+        return False
     
     gen_path = 'static/gen'
     os.makedirs(gen_path, exist_ok=True)
@@ -97,123 +90,24 @@ def build_without_obfuscation():
         return False
 
 
-def create_basic_js_files():
-    os.makedirs('static', exist_ok=True)
-    
-    misc_js = '''console.log('Misc.js loaded');
-
-function showMessage(message) {
-    if (message) {
-        alert(message);
-    }
-}
-
-function toggleElement(elementId) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.style.display = element.style.display === 'none' ? 'block' : 'none';
-    }
-}'''
-    
-    tasks_js = '''console.log('Tasks.js loaded');
-
-function submitTask(taskId) {
-    console.log('Submitting task:', taskId);
-    const form = document.getElementById('task-form-' + taskId);
-    if (form) {
-        form.submit();
-    }
-}
-
-function validateTaskForm(formId) {
-    const form = document.getElementById(formId);
-    if (!form) return false;
-    
-    const inputs = form.querySelectorAll('input[required], textarea[required]');
-    for (let input of inputs) {
-        if (!input.value.trim()) {
-            alert('Заполните все обязательные поля');
-            input.focus();
-            return false;
-        }
-    }
-    return true;
-}'''
-    
-    try:
-        with open('static/misc.js', 'w', encoding='utf-8') as f:
-            f.write(misc_js)
-        
-        with open('static/tasks.js', 'w', encoding='utf-8') as f:
-            f.write(tasks_js)
-        
-        print("✓ Созданы базовые JS файлы")
-        
-    except Exception as e:
-        print(f"✗ Ошибка создания файлов: {e}")
-        return False
-    
-    return True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def cleanup_source_files():
-    """Удаляет исходные JS файлы после успешной обфускации"""
-    source_files = [
-        'static/misc.js',
-        'static/tasks.js',
-        'src/misc.js', 
-        'src/tasks.js'
-    ]
-    
-    print("\nУдаление исходных файлов...")
-    for filepath in source_files:
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-                print(f"  ✓ Удален {filepath}")
-            except Exception as e:
-                print(f"  ⚠️  Не удалось удалить {filepath}: {e}")
-
 def build_assets():
     print("=== Сборка ресурсов для production ===")
     print(f"Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     clean_gen_folder()
     
-    if not check_nodejs():
-        print("✗ Node.js или NPM не найдены!")
-        print("  Возможные решения:")
-        print("  1. Установите Node.js с https://nodejs.org/")
-        print("  2. Перезапустите терминал после установки")
-        print("  3. Проверьте PATH")
-        return False
-    
     misc_path, tasks_path = check_source_files()
     if not misc_path:
-        print("✗ Исходные JS файлы не найдены!")
-        print("Создание базовых JS файлов...")
-        if not create_basic_js_files():
-            return False
-        misc_path, tasks_path = check_source_files()
-        if not misc_path:
-            return False
+        print("✗ Исходные файлы не найдены в static/!")
+        return False
     
     print(f"✓ Найдены исходные файлы:")
     print(f"  - {misc_path}")
     print(f"  - {tasks_path}\n")
+    
+    if not check_nodejs():
+        print("\n⚠️  Node.js не найден. Копирую файлы без обфускации...")
+        return build_without_obfuscation()
     
     if not os.path.exists('package.json'):
         print("Создание package.json...")
@@ -223,34 +117,24 @@ def build_assets():
         print("Установка зависимостей...")
         result = subprocess.run(['npm', 'install'], shell=True, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"✗ Ошибка установки: {result.stderr}")
-            return False
+            print(f"⚠️  Ошибка установки npm пакетов: {result.stderr}")
+            print("Копирую файлы без обфускации...")
+            return build_without_obfuscation()
         print("✓ Зависимости установлены\n")
     
     if not os.path.exists('obfuscator.config.json'):
         print("Создание конфигурации обфускатора...")
         create_obfuscator_config()
     
-    success = False
-    
-    if os.path.exists('build_assets_js.js'):
-        print("Запуск обфускации через build_assets_js.js...")
-        result = subprocess.run(['node', 'build_assets_js.js'], shell=True, capture_output=True, text=True)
-        if result.returncode == 0:
-            print("✓ Обфускация завершена успешно\n")
-            verify_results()
-            success = True
-        else:
-            print(f"✗ Ошибка: {result.stderr}")
-            print("Пробуем альтернативный метод...\n")
+    print("Запуск обфускации...")
+    success = run_direct_obfuscation(misc_path, tasks_path)
     
     if not success:
-        success = run_direct_obfuscation(misc_path, tasks_path)
-    
-    if success:
-        cleanup_source_files()  # Удаляем исходные файлы после успешной обфускации
+        print("\n⚠️  Обфускация не удалась. Копирую файлы без обфускации...")
+        success = build_without_obfuscation()
     
     return success
+
 
 def run_direct_obfuscation(misc_path, tasks_path):
     print("Запуск прямой обфускации...")
@@ -293,17 +177,6 @@ def run_direct_obfuscation(misc_path, tasks_path):
     return True
 
 
-
-
-
-
-
-
-
-
-
-
-
 def verify_results():
     gen_path = 'static/gen'
     print("\nПроверка результатов:")
@@ -324,6 +197,15 @@ def verify_results():
                     print(f"    → Файл скопирован без обфускации")
         else:
             print(f"  ✗ {filename} НЕ НАЙДЕН")
+    
+    print("\nИсходные файлы:")
+    for filename in ['misc.js', 'tasks.js']:
+        filepath = os.path.join('static', filename)
+        if os.path.exists(filepath):
+            size = os.path.getsize(filepath)
+            print(f"  ✓ {filename} ({size:,} байт)")
+        else:
+            print(f"  ✗ {filename} НЕ НАЙДЕН")
 
 
 def create_default_package_json():
@@ -332,13 +214,13 @@ def create_default_package_json():
         "version": "1.0.0",
         "description": "Dark School Security Learning Platform",
         "scripts": {
-            "build": "node build_assets_js.js",
-            "build:direct": "npm run obfuscate:misc && npm run obfuscate:tasks",
-            "obfuscate:misc": "javascript-obfuscator src/misc.js --output static/gen/misc.obf.js --config obfuscator.config.json",
-            "obfuscate:tasks": "javascript-obfuscator src/tasks.js --output static/gen/tasks.obf.js --config obfuscator.config.json",
-            "obfuscate:misc:static": "javascript-obfuscator static/misc.js --output static/gen/misc.obf.js --config obfuscator.config.json",
-            "obfuscate:tasks:static": "javascript-obfuscator static/tasks.js --output static/gen/tasks.obf.js --config obfuscator.config.json",
-            "clean": "rimraf static/gen/*.js"
+            "build": "node build_assets.py",
+            "build:clean": "npm run clean && npm run build",
+            "obfuscate": "npm run obfuscate:misc && npm run obfuscate:tasks",
+            "obfuscate:misc": "javascript-obfuscator static/misc.js --output static/gen/misc.obf.js --config obfuscator.config.json",
+            "obfuscate:tasks": "javascript-obfuscator static/tasks.js --output static/gen/tasks.obf.js --config obfuscator.config.json",
+            "clean": "rimraf static/gen/*.js",
+            "dev": "echo 'Используйте оригинальные файлы из static/'"
         },
         "devDependencies": {
             "javascript-obfuscator": "^4.1.0",
@@ -363,7 +245,7 @@ def create_obfuscator_config():
         "deadCodeInjectionThreshold": 0.4,
         "debugProtection": False,
         "debugProtectionInterval": 0,
-        "disableConsoleOutput": True,
+        "disableConsoleOutput": False,
         "identifierNamesGenerator": "hexadecimal",
         "log": False,
         "numbersToExpressions": True,
@@ -400,15 +282,16 @@ if __name__ == "__main__":
     
     if build_assets():
         print("\n✅ Сборка завершена успешно!")
-        print("   Обфусцированные файлы находятся в static/gen/")
-        print("   Теперь можете запустить приложение с USE_OBFUSCATED=True")
+        print("\nСтруктура файлов:")
+        print("  static/")
+        print("    ├── misc.js        (оригинал)")
+        print("    ├── tasks.js       (оригинал)")
+        print("    └── gen/")
+        print("        ├── misc.obf.js  (обфусцированный)")
+        print("        └── tasks.obf.js (обфусцированный)")
+        print("\nДля использования:")
+        print("  - Development: USE_OBFUSCATED=False")
+        print("  - Production: USE_OBFUSCATED=True")
     else:
-        print("\n⚠️  Пробуем сборку без обфускации...")
-        if build_without_obfuscation():
-            print("\n✅ Сборка завершена (без обфускации)!")
-            print("   Файлы находятся в static/gen/")
-            print("   Приложение будет работать с USE_OBFUSCATED=True")
-            cleanup_source_files()
-        else:
-            print("\n❌ Сборка завершена с ошибками!")
-            print("   Проверьте сообщения об ошибках выше")
+        print("\n❌ Сборка завершена с ошибками!")
+        print("   Проверьте сообщения об ошибках выше")

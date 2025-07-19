@@ -32,7 +32,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    ASSETS_DEBUG = False
+    ASSETS_DEBUG = True
     USE_OBFUSCATED = False  
     MINIFY_HTML = False
     SESSION_COOKIE_SECURE = False
@@ -43,5 +43,5 @@ class ProductionConfig(Config):
     ASSETS_DEBUG = False
     USE_OBFUSCATED = True
     MINIFY_HTML = True
-    SESSION_COOKIE_SECURE = False
-    REMEMBER_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True

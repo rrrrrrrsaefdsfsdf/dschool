@@ -240,6 +240,9 @@ def create_app():
     @app.route('/course')
     def course():
         return redirect("https://dark.school/courses")
+    
+
+    
         
     @app.route('/curator')
     @login_required
