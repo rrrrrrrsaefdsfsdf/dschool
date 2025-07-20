@@ -152,7 +152,7 @@ echo [2] 🗑️  Удалить lab_vulnerable.db
 echo [3] 🗑️  Удалить users.db
 echo [4] 📊 Показать информацию о БД
 echo [5] 💾 Создать резервную копию БД
-echo [6] 🔧 Инициализировать БД (создать таблицы)
+echo [6] 🔧 Инициализировать БД (запустить app.py)
 echo [7] ← Назад в главное меню
 echo.
 set /p db_choice="Выбери действие (1-7): "
@@ -257,41 +257,16 @@ cls
 echo 🔧 ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
 echo ════════════════════════════════════════
 echo.
-echo Создаю скрипт инициализации...
-echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && cat > init_db.py << 'EOF'
-#!/usr/bin/env python
-import os
-import sys
-sys.path.insert(0, '/var/www/dschool')
-
-# Создаем необходимые директории
-os.makedirs('instance', exist_ok=True)
-
-# Импортируем приложение
-from app import create_app, db
-
-# Создаем приложение и контекст
-application = create_app()
-with application.app_context():
-    # Создаем все таблицы
-    db.create_all()
-    print('Database tables created successfully!')
-    
-    # Проверяем наличие таблиц
-    from sqlalchemy import inspect
-    inspector = inspect(db.engine)
-    tables = inspector.get_table_names()
-    print(f'Created tables: {tables}')
-EOF"
-
+echo Создаю необходимые директории...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && mkdir -p instance"
 echo.
-echo Запускаю инициализацию БД...
-echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && source venv/bin/activate && python init_db.py && rm -f init_db.py"
+echo Запускаю app.py для создания БД...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && source venv/bin/activate && timeout 5 python app.py || echo 'БД инициализирована'"
 echo.
-echo Перезапускаю сервис...
-echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "systemctl restart dschool"
+echo Проверяю создание БД...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && ls -la instance/users.db lab_vulnerable.db 2>/dev/null || echo 'БД еще не созданы'"
 echo.
-echo ✅ База данных инициализирована!
+echo ✅ Процесс инициализации завершен!
 pause
 goto db_management
 
