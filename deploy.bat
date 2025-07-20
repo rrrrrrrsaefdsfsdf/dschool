@@ -3,7 +3,6 @@ chcp 65001 >nul
 color 0A
 title DSchool Deploy Manager
 
-:: Настройки
 set SSH_HOST=188.124.58.84
 set SSH_USER=root
 set SSH_PASS=dschoolubuntupractice_
@@ -24,12 +23,13 @@ echo ║  [4] 🔄 Перезапустить сервисы                    
 echo ║  [5] 📋 Посмотреть логи                                   ║
 echo ║  [6] 🔍 Проверить статус сайта                            ║
 echo ║  [7] 🛠️  SSH подключение к серверу                        ║
-echo ║  [8] 🔐 Настроить SSH ключи (рекомендуется)              ║
+echo ║  [8] 🔐 Настроить SSH ключи                               ║
+echo ║  [9] 🗑️  Управление базой данных                          ║
 echo ║  [0] ❌ Выход                                              ║
 echo ║                                                            ║
 echo ╚════════════════════════════════════════════════════════════╝
 echo.
-set /p choice="Выбери действие (0-8): "
+set /p choice="Выбери действие (0-9): "
 
 if "%choice%"=="1" goto full_deploy
 if "%choice%"=="2" goto git_only
@@ -39,6 +39,7 @@ if "%choice%"=="5" goto view_logs
 if "%choice%"=="6" goto check_status
 if "%choice%"=="7" goto ssh_connect
 if "%choice%"=="8" goto setup_ssh_keys
+if "%choice%"=="9" goto db_management
 if "%choice%"=="0" exit /b 0
 goto menu
 
@@ -109,11 +110,9 @@ goto menu
 :ssh_connect
 cls
 echo 🛠️  Подключение к серверу...
-:: Используем PuTTY с сохраненной сессией
 "%PUTTY_PATH%" -load "DSchool_Server" 2>nul
 if errorlevel 1 (
     echo Создаю сессию PuTTY...
-    :: Альтернатива - использовать plink в интерактивном режиме
     "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST%
 )
 goto menu
@@ -128,7 +127,6 @@ echo.
 echo 1. Сначала создадим SSH ключ на вашем компьютере:
 echo.
 pause
-:: Генерация SSH ключа
 if not exist "%USERPROFILE%\.ssh" mkdir "%USERPROFILE%\.ssh"
 if not exist "%USERPROFILE%\.ssh\id_rsa" (
     ssh-keygen -t rsa -f "%USERPROFILE%\.ssh\id_rsa" -N ""
@@ -144,7 +142,159 @@ echo ✅ SSH ключи настроены!
 pause
 goto menu
 
-:: Функции
+:db_management
+cls
+echo 🗑️  УПРАВЛЕНИЕ БАЗОЙ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo [1] 🗑️  Удалить ВСЕ базы данных
+echo [2] 🗑️  Удалить lab_vulnerable.db
+echo [3] 🗑️  Удалить users.db
+echo [4] 📊 Показать информацию о БД
+echo [5] 💾 Создать резервную копию БД
+echo [6] 🔧 Инициализировать БД (создать таблицы)
+echo [7] ← Назад в главное меню
+echo.
+set /p db_choice="Выбери действие (1-7): "
+
+if "%db_choice%"=="1" goto delete_all_db
+if "%db_choice%"=="2" goto delete_lab_db
+if "%db_choice%"=="3" goto delete_users_db
+if "%db_choice%"=="4" goto show_db_info
+if "%db_choice%"=="5" goto backup_db
+if "%db_choice%"=="6" goto init_db
+if "%db_choice%"=="7" goto menu
+goto db_management
+
+:delete_all_db
+cls
+echo ⚠️  УДАЛЕНИЕ ВСЕХ БАЗ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo ВНИМАНИЕ! Будут удалены:
+echo - lab_vulnerable.db
+echo - instance/users.db
+echo.
+set /p confirm="Вы уверены? Введите 'YES' для подтверждения: "
+if /i "%confirm%"=="YES" (
+    echo.
+    echo Удаляю базы данных...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && rm -f lab_vulnerable.db && rm -f instance/users.db && echo 'Все базы данных удалены!'"
+) else (
+    echo Операция отменена.
+)
+pause
+goto db_management
+
+:delete_lab_db
+cls
+echo ⚠️  УДАЛЕНИЕ lab_vulnerable.db
+echo ════════════════════════════════════════
+echo.
+set /p confirm="Вы уверены? Введите 'YES' для подтверждения: "
+if /i "%confirm%"=="YES" (
+    echo.
+    echo Удаляю lab_vulnerable.db...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && rm -f lab_vulnerable.db && echo 'lab_vulnerable.db удалена!'"
+) else (
+    echo Операция отменена.
+)
+pause
+goto db_management
+
+:delete_users_db
+cls
+echo ⚠️  УДАЛЕНИЕ users.db
+echo ════════════════════════════════════════
+echo.
+set /p confirm="Вы уверены? Введите 'YES' для подтверждения: "
+if /i "%confirm%"=="YES" (
+    echo.
+    echo Удаляю users.db...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && rm -f instance/users.db && echo 'users.db удалена!'"
+) else (
+    echo Операция отменена.
+)
+pause
+goto db_management
+
+:show_db_info
+cls
+echo 📊 ИНФОРМАЦИЯ О БАЗАХ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo lab_vulnerable.db:
+echo ──────────────────
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && ls -lah lab_vulnerable.db 2>/dev/null || echo 'Файл не найден'"
+echo.
+echo users.db:
+echo ──────────────────
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && ls -lah instance/users.db 2>/dev/null || echo 'Файл не найден'"
+echo.
+echo Общий размер:
+echo ──────────────────
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && du -ch lab_vulnerable.db instance/users.db 2>/dev/null | grep total || echo '0 байт'"
+pause
+goto db_management
+
+:backup_db
+cls
+echo 💾 РЕЗЕРВНОЕ КОПИРОВАНИЕ БД
+echo ════════════════════════════════════════
+echo.
+echo Создаю резервные копии...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && mkdir -p backups && cp lab_vulnerable.db backups/lab_vulnerable_$(date +%%Y%%m%%d_%%H%%M%%S).db 2>/dev/null && echo 'lab_vulnerable.db скопирована' || echo 'lab_vulnerable.db не найдена'"
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && mkdir -p backups && cp instance/users.db backups/users_$(date +%%Y%%m%%d_%%H%%M%%S).db 2>/dev/null && echo 'users.db скопирована' || echo 'users.db не найдена'"
+echo.
+echo Список резервных копий:
+echo ──────────────────────
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && ls -la backups/*.db 2>/dev/null | tail -10 || echo 'Резервные копии не найдены'"
+pause
+goto db_management
+
+:init_db
+cls
+echo 🔧 ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo Создаю скрипт инициализации...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && cat > init_db.py << 'EOF'
+#!/usr/bin/env python
+import os
+import sys
+sys.path.insert(0, '/var/www/dschool')
+
+# Создаем необходимые директории
+os.makedirs('instance', exist_ok=True)
+
+# Импортируем приложение
+from app import create_app, db
+
+# Создаем приложение и контекст
+application = create_app()
+with application.app_context():
+    # Создаем все таблицы
+    db.create_all()
+    print('Database tables created successfully!')
+    
+    # Проверяем наличие таблиц
+    from sqlalchemy import inspect
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    print(f'Created tables: {tables}')
+EOF"
+
+echo.
+echo Запускаю инициализацию БД...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && source venv/bin/activate && python init_db.py && rm -f init_db.py"
+echo.
+echo Перезапускаю сервис...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "systemctl restart dschool"
+echo.
+echo ✅ База данных инициализирована!
+pause
+goto db_management
+
 :git_push
 echo Добавляю файлы в Git...
 git add .
