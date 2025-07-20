@@ -31,7 +31,7 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Пожалуйста, войдите в систему'
-    login_manager.login_message_category = 'warning'
+    login_manager.login_message_category = 'info'
     login_manager.session_protection = 'strong'
     
     login_manager.remember_cookie_name = app.config.get('REMEMBER_COOKIE_NAME', 'remember_token')

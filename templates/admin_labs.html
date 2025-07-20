@@ -4,12 +4,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>🧪 Управление лабораторными работами</h2>
-        <a class="btn btn-success" href="{{ url_for('admin.admin_labs_new') }}">
-            <i class="fas fa-plus"></i> Добавить лабораторию
-        </a>
     </div>
-
-    <!-- Статистика -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-center">
@@ -44,8 +39,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Быстрые действия -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
@@ -62,8 +55,7 @@
                 </div>
             </div>
         </div>
-
-    <!-- Флеш сообщения -->
+    </div>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -74,8 +66,6 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-
-    <!-- Таблица лабораторий -->
     {% if labs %}
         <div class="card">
             <div class="card-header bg-light">
@@ -91,7 +81,6 @@
                                 <th width="10%">Тип</th>
                                 <th width="10%">Сложность</th>
                                 <th width="15%">Эндпоинт</th>
-                                <th width="10%">Подсказки</th>
                                 <th width="10%">Создана</th>
                                 <th width="15%">Действия</th>
                             </tr>
@@ -122,50 +111,28 @@
                                         <i class="fas fa-external-link-alt"></i>
                                     </a>
                                 </td>
-                                <td class="text-center">
-                                    {% set hints_count = lab.hints.count() if lab.hints else 0 %}
-                                    <a href="{{ url_for('admin.admin_lab_hints', lab_id=lab.id) }}"
-                                       class="btn btn-sm btn-outline-info position-relative">
-                                        💡
-                                        <span class="badge bg-secondary position-absolute top-0 start-100 translate-middle">
-                                            {{ hints_count }}
-                                        </span>
-                                    </a>
-                                </td>
                                 <td>
                                     <small>{{ lab.created_at.strftime('%d.%m.%Y') if lab.created_at else 'Неизвестно' }}</small>
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
-                                        <a href="{{ url_for('admin.admin_labs_edit', id=lab.id) }}"
-                                           class="btn btn-outline-primary"
-                                           data-bs-toggle="tooltip"
-                                           title="Редактировать">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{{ url_for('admin.admin_lab_hints', lab_id=lab.id) }}"
-                                           class="btn btn-outline-info"
-                                           data-bs-toggle="tooltip"
-                                           title="Подсказки">
-                                            <i class="fas fa-lightbulb"></i>
-                                        </a>
-                                        <a href="{{ url_for('admin.admin_lab_instructions', lab_id=lab.id) }}"
-                                           class="btn btn-outline-success"
-                                           data-bs-toggle="tooltip"
-                                           title="Инструкции">
-                                            <i class="fas fa-info-circle"></i>
-                                        </a>
+                                        
                                         <form method="post"
                                               action="{{ url_for('admin.admin_labs_delete', id=lab.id) }}"
                                               style="display:inline-block;"
                                               onsubmit="return confirm('Удалить лабораторию «{{ lab.title }}»?\n\nВнимание: будут удалены все связанные подсказки, инструкции и прогресс студентов!');">
-
                                             <button type="submit"
                                                     class="btn btn-outline-danger"
                                                     data-bs-toggle="tooltip"
                                                     title="Удалить">
                                                 <i class="fas fa-trash"></i>
                                             </button>
+                                            <a href="{{ url_for('admin.admin_labs_edit', id=lab.id) }}"
+                                            class="btn btn-outline-primary"
+                                            data-bs-toggle="tooltip"
+                                            title="Редактировать">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                         </form>
                                     </div>
                                 </td>
@@ -176,31 +143,23 @@
                 </div>
             </div>
         </div>
-
-
     {% else %}
         <div class="card">
             <div class="card-body text-center py-5">
                 <h5>🧪 Лабораторных работ пока нет</h5>
                 <p class="text-muted">Создайте первую лабораторную работу или загрузите тестовые данные.</p>
-                <a href="{{ url_for('admin.admin_labs_new') }}" class="btn btn-success me-2">
-                    <i class="fas fa-plus"></i> Создать лабораторию
-                </a>
                 <a href="{{ url_for('admin.init_labs_data') }}" class="btn btn-warning">
                     <i class="fas fa-download"></i> Загрузить тестовые лабы
                 </a>
             </div>
         </div>
     {% endif %}
-
-    <!-- Навигация -->
     <div class="mt-4">
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Назад в панель управления
         </a>
     </div>
 </div>
-
 <style>
 .btn-xs {
     padding: 0.125rem 0.25rem;
@@ -208,7 +167,6 @@
     line-height: 1.2;
     border-radius: 0.2rem;
 }
-
 .table th {
     border-top: none;
     font-weight: 600;
@@ -217,19 +175,15 @@
     top: 0;
     z-index: 10;
 }
-
 .btn-group .btn {
     margin-right: 2px;
 }
-
 .btn-group .btn:last-child {
     margin-right: 0;
 }
-
 .table-hover tbody tr:hover {
     background-color: rgba(0,0,0,.02);
 }
-
 code {
     background-color: #f8f9fa;
     color: #e83e8c;
@@ -237,37 +191,30 @@ code {
     border-radius: 0.25rem;
     font-size: 0.875rem;
 }
-
 .position-relative .badge {
     font-size: 0.625rem;
     padding: 0.125rem 0.25rem;
     border-radius: 50%;
     min-width: 18px;
 }
-
 .card-header {
     border-bottom: 2px solid rgba(0,0,0,.125);
 }
-
 .lab-title {
     color: #495057;
 }
-
 @media (max-width: 768px) {
     .table {
         font-size: 0.875rem;
     }
-
     .btn-group-sm .btn {
         padding: 0.25rem 0.35rem;
         font-size: 0.75rem;
     }
 }
 </style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Инициализация тултипов
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)

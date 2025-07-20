@@ -3,7 +3,6 @@ chcp 65001 >nul
 color 0A
 title DSchool Deploy Manager
 
-:: Настройки
 set SSH_HOST=188.124.58.84
 set SSH_USER=root
 set SSH_PASS=dschoolubuntupractice_
@@ -24,12 +23,13 @@ echo ║  [4] 🔄 Перезапустить сервисы                    
 echo ║  [5] 📋 Посмотреть логи                                   ║
 echo ║  [6] 🔍 Проверить статус сайта                            ║
 echo ║  [7] 🛠️  SSH подключение к серверу                        ║
-echo ║  [8] 🔐 Настроить SSH ключи (рекомендуется)              ║
+echo ║  [8] 🔐 Настроить SSH ключи                               ║
+echo ║  [9] 🗑️  Управление базой данных                          ║
 echo ║  [0] ❌ Выход                                              ║
 echo ║                                                            ║
 echo ╚════════════════════════════════════════════════════════════╝
 echo.
-set /p choice="Выбери действие (0-8): "
+set /p choice="Выбери действие (0-9): "
 
 if "%choice%"=="1" goto full_deploy
 if "%choice%"=="2" goto git_only
@@ -39,6 +39,7 @@ if "%choice%"=="5" goto view_logs
 if "%choice%"=="6" goto check_status
 if "%choice%"=="7" goto ssh_connect
 if "%choice%"=="8" goto setup_ssh_keys
+if "%choice%"=="9" goto db_management
 if "%choice%"=="0" exit /b 0
 goto menu
 
@@ -109,11 +110,9 @@ goto menu
 :ssh_connect
 cls
 echo 🛠️  Подключение к серверу...
-:: Используем PuTTY с сохраненной сессией
 "%PUTTY_PATH%" -load "DSchool_Server" 2>nul
 if errorlevel 1 (
     echo Создаю сессию PuTTY...
-    :: Альтернатива - использовать plink в интерактивном режиме
     "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST%
 )
 goto menu
@@ -128,7 +127,6 @@ echo.
 echo 1. Сначала создадим SSH ключ на вашем компьютере:
 echo.
 pause
-:: Генерация SSH ключа
 if not exist "%USERPROFILE%\.ssh" mkdir "%USERPROFILE%\.ssh"
 if not exist "%USERPROFILE%\.ssh\id_rsa" (
     ssh-keygen -t rsa -f "%USERPROFILE%\.ssh\id_rsa" -N ""
@@ -144,7 +142,97 @@ echo ✅ SSH ключи настроены!
 pause
 goto menu
 
-:: Функции
+:db_management
+cls
+echo 🗑️  УПРАВЛЕНИЕ БАЗОЙ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo [1] 🗑️  Удалить базу данных (ОПАСНО!)
+echo [2] 📊 Показать размер базы данных
+echo [3] 💾 Создать резервную копию БД
+echo [4] 🔄 Пересоздать БД (удалить и создать новую)
+echo [5] ← Назад в главное меню
+echo.
+set /p db_choice="Выбери действие (1-5): "
+
+if "%db_choice%"=="1" goto delete_db
+if "%db_choice%"=="2" goto show_db_size
+if "%db_choice%"=="3" goto backup_db
+if "%db_choice%"=="4" goto recreate_db
+if "%db_choice%"=="5" goto menu
+goto db_management
+
+:delete_db
+cls
+echo ⚠️  УДАЛЕНИЕ БАЗЫ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo ВНИМАНИЕ! Это действие удалит ВСЮ базу данных!
+echo Все данные будут ПОТЕРЯНЫ!
+echo.
+set /p confirm="Вы уверены? Введите 'YES' для подтверждения: "
+if /i "%confirm%"=="YES" (
+    echo.
+    echo Удаляю базу данных...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && rm -f db.sqlite3 && echo 'База данных удалена!'"
+) else (
+    echo Операция отменена.
+)
+pause
+goto db_management
+
+:show_db_size
+cls
+echo 📊 ИНФОРМАЦИЯ О БАЗЕ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && ls -lah db.sqlite3 2>/dev/null || echo 'База данных не найдена'"
+echo.
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && du -h db.sqlite3 2>/dev/null || echo '0 байт'"
+pause
+goto db_management
+
+:backup_db
+cls
+echo 💾 РЕЗЕРВНОЕ КОПИРОВАНИЕ БД
+echo ════════════════════════════════════════
+echo.
+echo Создаю резервную копию...
+echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && cp db.sqlite3 db_backup_$(date +%%Y%%m%%d_%%H%%M%%S).sqlite3 && echo 'Резервная копия создана!' && ls -la db_backup_*.sqlite3 | tail -5"
+pause
+goto db_management
+
+:recreate_db
+cls
+echo 🔄 ПЕРЕСОЗДАНИЕ БАЗЫ ДАННЫХ
+echo ════════════════════════════════════════
+echo.
+echo Это действие:
+echo - Создаст резервную копию текущей БД
+echo - Удалит текущую БД
+echo - Создаст новую пустую БД
+echo - Применит миграции
+echo.
+set /p confirm="Продолжить? (y/n): "
+if /i "%confirm%"=="y" (
+    echo.
+    echo Создаю резервную копию...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && cp db.sqlite3 db_backup_recreate_$(date +%%Y%%m%%d_%%H%%M%%S).sqlite3"
+    echo.
+    echo Удаляю старую БД...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && rm -f db.sqlite3"
+    echo.
+    echo Создаю новую БД и применяю миграции...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "cd /var/www/dschool && source venv/bin/activate && python manage.py migrate && echo 'База данных пересоздана!'"
+    echo.
+    echo Перезапускаю сервис...
+    echo %SSH_PASS% | "%PLINK_PATH%" -pw %SSH_PASS% %SSH_USER%@%SSH_HOST% "systemctl restart dschool"
+) else (
+    echo Операция отменена.
+)
+pause
+goto db_management
+
 :git_push
 echo Добавляю файлы в Git...
 git add .
