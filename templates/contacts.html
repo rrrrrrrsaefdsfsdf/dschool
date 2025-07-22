@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Контакты{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <h2><i class="fas fa-address-book"></i> Контакты</h2>
+            
+            <!-- Техническая поддержка -->
+            <div class="card border-primary mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-headset"></i> Техническая поддержка</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            <i class="fab fa-telegram fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">{{ tech_support.name }}</h6>
+                            <p class="mb-1">{{ tech_support.description }}</p>
+                            <a href="{{ tech_support.url }}" class="btn btn-primary btn-sm" target="_blank">
+                                <i class="fab fa-telegram me-1"></i> Написать в Telegram
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Контакты кураторов -->
+            {% if curator_contacts %}
+            <h4><i class="fas fa-chalkboard-teacher"></i> Ваши кураторы</h4>
+            {% for contact in curator_contacts %}
+            <div class="card border-success mb-3">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user-tie me-2"></i>
+                        {{ contact.curator.curator_name or contact.curator.username }}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Курсы:</strong>
+                        {% for course_title in contact.courses %}
+                            <span class="badge bg-success me-1">{{ course_title }}</span>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="contact-methods">
+                        {% if contact.curator.curator_telegram %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fab fa-telegram me-2 text-primary"></i>
+                            <a href="https://t.me/{{ contact.curator.curator_telegram }}" target="_blank">
+                                @{{ contact.curator.curator_telegram }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if contact.curator.curator_email %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-envelope me-2 text-primary"></i>
+                            <a href="mailto:{{ contact.curator.curator_email }}">
+                                {{ contact.curator.curator_email }}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Если у студента нет кураторов -->
+            {% if current_user.role == 'student' and not curator_contacts %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                У вас пока нет назначенных кураторов. По всем вопросам обращайтесь в техническую поддержку.
+            </div>
+            {% endif %}
+
+            <!-- Для кураторов - ссылка на редактирование профиля -->
+            {% if current_user.role == 'curator' %}
+            <div class="card border-warning mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fas fa-edit"></i> Ваш профиль куратора</h6>
+                </div>
+                <div class="card-body">
+                    {% if current_user.has_contact_info %}
+                    <p><strong>Имя:</strong> {{ current_user.curator_name or 'Не указано' }}</p>
+                    <p><strong>Telegram:</strong> 
+                        {% if current_user.curator_telegram %}
+                            @{{ current_user.curator_telegram }}
+                        {% else %}
+                            Не указан
+                        {% endif %}
+                    </p>
+                    <p><strong>Email:</strong> {{ current_user.curator_email or 'Не указан' }}</p>
+                    {% else %}
+                    <p class="text-muted">Вы еще не заполнили свои контактные данные.</p>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('curator.edit_profile') }}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Редактировать контакты
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

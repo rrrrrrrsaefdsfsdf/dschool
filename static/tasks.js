@@ -20,6 +20,68 @@ function getCookie(name) {
   return cookieValue;
 }
 
+
+// Глобальные переменные для отслеживания курсов
+let currentCourseInfo = null;
+let allCoursesData = [];
+
+// Функция обновления отображения курса
+function updateCourseDisplay() {
+  const courseInfo = document.getElementById('courseInfo');
+  const courseName = document.getElementById('courseName');
+  const curatorName = document.getElementById('curatorName');
+  
+  if (currentCourseInfo && courseInfo && courseName && curatorName) {
+    courseName.textContent = currentCourseInfo.title;
+    curatorName.textContent = `Куратор: ${currentCourseInfo.curator || 'Не назначен'}`;
+    courseInfo.style.display = 'block';
+  } else if (courseInfo) {
+    courseInfo.style.display = 'none';
+  }
+}
+
+// Функция обновления информации о задаче/лабе
+function updateTaskCourseDisplay(item) {
+  const taskCourseBadge = document.getElementById('taskCourseBadge');
+  const taskCourse = document.getElementById('taskCourse');
+  const taskDifficulty = document.getElementById('taskDifficulty');
+  
+  // Отображение курса
+  if (item.course && taskCourseBadge && taskCourse) {
+    taskCourse.textContent = item.course.title;
+    taskCourseBadge.style.display = 'block';
+    
+    // Обновляем текущий курс если он изменился
+    if (!currentCourseInfo || currentCourseInfo.id !== item.course.id) {
+      currentCourseInfo = item.course;
+      updateCourseDisplay();
+    }
+  } else if (taskCourseBadge) {
+    taskCourseBadge.style.display = 'none';
+    // Если задача/лаба без курса - очищаем информацию
+    if (currentCourseInfo && !item.course) {
+      currentCourseInfo = null;
+      updateCourseDisplay();
+    }
+  }
+  
+  // Отображение сложности для лаб
+  if (item.difficulty && taskDifficulty) {
+    taskDifficulty.textContent = item.difficulty;
+    taskDifficulty.style.display = 'inline-block';
+  } else if (taskDifficulty) {
+    taskDifficulty.style.display = 'none';
+  }
+}
+
+// Функция обновления счетчика задач
+function updateTaskCounter(count) {
+  const counter = document.getElementById('taskCounter');
+  if (counter) {
+    counter.textContent = count || 0;
+  }
+}
+
 function urlize(text) {
   if (!text) return '';
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -124,28 +186,35 @@ function updateButtonState(task) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const elements = {
-    tasksList: document.getElementById('tasksList'),
-    taskContent: document.getElementById('taskContent'),
-    noTaskMessage: document.getElementById('noTaskMessage'),
-    taskTitle: document.getElementById('taskTitle'),
-    taskDescription: document.getElementById('taskDescription'),
-    taskType: document.getElementById('taskType'),
-    taskStatus: document.getElementById('taskStatus'),
-    answerInput: document.getElementById('answerInput'),
-    checkBtn: document.getElementById('checkBtn'),
-    clearBtn: document.getElementById('clearBtn'),
-    btnIcon: document.getElementById('btnIcon'),
-    checkBtnText: document.getElementById('checkBtnText'),
-    result: document.getElementById('result'),
-    btnPractice: document.getElementById('btnPractice'),
-    btnTheory: document.getElementById('btnTheory'),
-    regularTaskFields: document.getElementById('regularTaskFields'),
-    labSpecificContent: document.getElementById('labSpecificContent'),
-    charCount: document.getElementById('charCount'),
-    submissionStatus: document.getElementById('submissionStatus')
-  };
+const elements = {
+  tasksList: document.getElementById('tasksList'),
+  taskContent: document.getElementById('taskContent'),
+  noTaskMessage: document.getElementById('noTaskMessage'),
+  taskTitle: document.getElementById('taskTitle'),
+  taskDescription: document.getElementById('taskDescription'),
+  taskType: document.getElementById('taskType'),
+  taskStatus: document.getElementById('taskStatus'),
+  answerInput: document.getElementById('answerInput'),
+  checkBtn: document.getElementById('checkBtn'),
+  clearBtn: document.getElementById('clearBtn'),
+  btnIcon: document.getElementById('btnIcon'),
+  checkBtnText: document.getElementById('checkBtnText'),
+  result: document.getElementById('result'),
+  btnPractice: document.getElementById('btnPractice'),
+  btnTheory: document.getElementById('btnTheory'),
+  regularTaskFields: document.getElementById('regularTaskFields'),
+  labSpecificContent: document.getElementById('labSpecificContent'),
+  charCount: document.getElementById('charCount'),
+  submissionStatus: document.getElementById('submissionStatus'),
+  // Добавляем новые элементы
+  courseInfo: document.getElementById('courseInfo'),
+  courseName: document.getElementById('courseName'),
+  curatorName: document.getElementById('curatorName'),
+  taskCourseBadge: document.getElementById('taskCourseBadge'),
+  taskCourse: document.getElementById('taskCourse'),
+  taskDifficulty: document.getElementById('taskDifficulty'),
+  taskCounter: document.getElementById('taskCounter')
+};
 
   const missingElements = Object.entries(elements).filter(([key, el]) => !el);
   if (missingElements.length > 0) {
@@ -297,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('TasksList element not found, skipping render');
       return;
     }
-
     elements.tasksList.innerHTML = '';
     if (state.currentType === 'Теория') {
       state.filteredItems = state.allTasks.filter(t => t.type === 'Теория');
@@ -310,6 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }));
       state.filteredItems = [...practicalTasks, ...labs];
     }
+    
+    // Добавьте эту строку для обновления счетчика
+    updateTaskCounter(state.filteredItems.length);
 
     if (!state.filteredItems.length) {
       showContent(false);
@@ -412,6 +483,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (elements.regularTaskFields) elements.regularTaskFields.style.display = 'block';
     if (elements.labSpecificContent) elements.labSpecificContent.style.display = 'none';
+    
+    // Добавьте эту строку
+    updateTaskCourseDisplay(task);
+    
     updateAnswerDisplay(task);
     updateActiveButton();
     updateTaskInfo(task, state);
@@ -434,6 +509,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.taskStatus) {
       elements.taskStatus.textContent = lab.is_solved ? 'Решена' : 'Не решена';
     }
+    
+    // Добавьте эту строку
+    updateTaskCourseDisplay(lab);
+    
     if (elements.regularTaskFields) elements.regularTaskFields.style.display = 'none';
     if (elements.labSpecificContent) {
       elements.labSpecificContent.style.display = 'block';
@@ -839,4 +918,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initialize();
-});
+;

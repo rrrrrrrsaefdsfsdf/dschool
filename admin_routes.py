@@ -3,31 +3,274 @@ from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
 from extensions import db, csrf
-from forms import TaskForm, LabForm, RegistrationForm
-from models import User, Task, Lab, UserTaskProgress, LabProgress, CuratorContact
+from forms import TaskForm, LabForm, RegistrationForm, CourseForm, UserCourseForm, CourseTaskForm, CourseLabForm
+from models import User, Task, Lab, UserTaskProgress, LabProgress, CuratorContact, Course, UserCourse, CourseModeration
 from utils import admin_required, get_lab_db
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+@admin_bp.route('/courses')
+@login_required
+@admin_required
+def admin_courses():
+    courses = Course.query.all()
+    return render_template('admin_courses.html', courses=courses)
+
+@admin_bp.route('/courses/new', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_courses_new():
+    form = CourseForm()
+    curators = User.query.filter_by(role='curator').all()
+    form.curator_id.choices = [(0, 'Без куратора')] + [(c.id, c.username) for c in curators]
+    
+    if form.validate_on_submit():
+        curator_id = form.curator_id.data if form.curator_id.data != 0 else None
+        course = Course(
+            title=form.title.data,
+            description=form.description.data,
+            curator_id=curator_id,
+            is_active=form.is_active.data,
+            creator_id=current_user.id
+        )
+        db.session.add(course)
+        db.session.commit()
+        flash(f'Курс "{course.title}" создан успешно!', 'success')
+        return redirect(url_for('admin.admin_courses'))
+    
+    return render_template('admin_course_form.html', form=form, title='Создать новый курс')
+
+@admin_bp.route('/courses/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_courses_edit(id):
+    course = Course.query.get_or_404(id)
+    form = CourseForm(obj=course)
+    
+    curators = User.query.filter_by(role='curator').all()
+    form.curator_id.choices = [(0, 'Без куратора')] + [(c.id, c.username) for c in curators]
+    
+    if form.validate_on_submit():
+        course.title = form.title.data
+        course.description = form.description.data
+        course.curator_id = form.curator_id.data if form.curator_id.data != 0 else None
+        course.is_active = form.is_active.data
+        course.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'Курс "{course.title}" обновлен!', 'success')
+        return redirect(url_for('admin.admin_courses'))
+    
+    return render_template('admin_course_form.html', form=form, course=course, title='Редактировать курс')
+
+@admin_bp.route('/courses/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def admin_courses_delete(id):
+    course = Course.query.get_or_404(id)
+    course_title = course.title
+    
+    try:
+        UserCourse.query.filter_by(course_id=id).delete()
+        Task.query.filter_by(course_id=id).update({'course_id': None})
+        Lab.query.filter_by(course_id=id).update({'course_id': None})
+        CourseModeration.query.filter_by(course_id=id).delete()
+        db.session.delete(course)
+        db.session.commit()
+        
+        flash(f'Курс "{course_title}" удален успешно!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении курса: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_courses'))
+
+@admin_bp.route('/user-courses')
+@login_required
+@admin_required
+def admin_user_courses():
+    users_with_courses = User.query.all()
+    courses = Course.query.filter_by(is_active=True).all()
+    return render_template('admin_user_courses.html', users=users_with_courses, courses=courses)
+
+@admin_bp.route('/user-courses/grant', methods=['POST'])
+@login_required
+@admin_required
+def grant_user_course_access():
+    user_id = request.form.get('user_id')
+    course_id = request.form.get('course_id')
+    
+    if not user_id or not course_id:
+        flash('Выберите пользователя и курс', 'error')
+        return redirect(url_for('admin.admin_user_courses'))
+    
+    existing = UserCourse.query.filter_by(user_id=user_id, course_id=course_id).first()
+    if existing:
+        flash('Пользователь уже имеет доступ к этому курсу', 'warning')
+        return redirect(url_for('admin.admin_user_courses'))
+    
+    user = User.query.get(user_id)
+    course = Course.query.get(course_id)
+    
+    user_course = UserCourse(
+        user_id=user_id,
+        course_id=course_id,
+        granted_by=current_user.id
+    )
+    
+    db.session.add(user_course)
+    db.session.commit()
+    
+    flash(f'Пользователю {user.username} предоставлен доступ к курсу "{course.title}"', 'success')
+    return redirect(url_for('admin.admin_user_courses'))
+
+@admin_bp.route('/user-courses/revoke', methods=['POST'])
+@login_required
+@admin_required
+def revoke_user_course_access():
+    user_id = request.form.get('user_id')
+    course_id = request.form.get('course_id')
+    
+    user_course = UserCourse.query.filter_by(user_id=user_id, course_id=course_id).first()
+    if user_course:
+        user = User.query.get(user_id)
+        course = Course.query.get(course_id)
+        
+        db.session.delete(user_course)
+        db.session.commit()
+        
+        flash(f'Доступ пользователя {user.username} к курсу "{course.title}" отозван', 'success')
+    else:
+        flash('Доступ к курсу не найден', 'error')
+    
+    return redirect(url_for('admin.admin_user_courses'))
+
+@admin_bp.route('/moderation')
+@login_required
+@admin_required
+def admin_moderation():
+    pending_requests = CourseModeration.query.filter_by(status='pending').order_by(
+        CourseModeration.created_at.desc()
+    ).all()
+    return render_template('admin_moderation.html', requests=pending_requests)
+
+@admin_bp.route('/moderation/<int:id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_moderation(id):
+    moderation = CourseModeration.query.get_or_404(id)
+    admin_comment = request.form.get('admin_comment', '')
+    
+    try:
+        if moderation.change_type == 'add_task':
+            task_data = moderation.change_data
+            task = Task(
+                title=task_data['title'],
+                description=task_data['description'],
+                type=task_data['type'],
+                difficulty=task_data.get('difficulty', 'Легко'),
+                course_id=moderation.course_id
+            )
+            db.session.add(task)
+            
+        elif moderation.change_type == 'edit_task':
+            task_id = moderation.change_data['task_id']
+            task = Task.query.get(task_id)
+            if task:
+                task.title = moderation.change_data['title']
+                task.description = moderation.change_data['description']
+                task.type = moderation.change_data['type']
+                task.difficulty = moderation.change_data.get('difficulty', task.difficulty)
+                
+        elif moderation.change_type == 'add_lab':
+            lab_data = moderation.change_data
+            lab = Lab(
+                title=lab_data['title'],
+                description=lab_data['description'],
+                difficulty=lab_data['difficulty'],
+                endpoint=lab_data['endpoint'],
+                flag=lab_data['flag'],
+                type=lab_data.get('type', 'SQL Injection'),
+                course_id=moderation.course_id
+            )
+            db.session.add(lab)
+            
+        elif moderation.change_type == 'edit_lab':
+            lab_id = moderation.change_data['lab_id']
+            lab = Lab.query.get(lab_id)
+            if lab:
+                lab.title = moderation.change_data['title']
+                lab.description = moderation.change_data['description']
+                lab.difficulty = moderation.change_data['difficulty']
+        
+        moderation.status = 'approved'
+        moderation.admin_comment = admin_comment
+        moderation.reviewed_by = current_user.id
+        moderation.reviewed_at = datetime.utcnow()
+        
+        db.session.commit()
+        flash(f'Запрос от {moderation.curator.username} одобрен', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при одобрении запроса: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_moderation'))
+
+@admin_bp.route('/moderation/<int:id>/reject', methods=['POST'])
+@login_required
+@admin_required
+def reject_moderation(id):
+    moderation = CourseModeration.query.get_or_404(id)
+    admin_comment = request.form.get('admin_comment', 'Запрос отклонен')
+    
+    moderation.status = 'rejected'
+    moderation.admin_comment = admin_comment
+    moderation.reviewed_by = current_user.id
+    moderation.reviewed_at = datetime.utcnow()
+    
+    db.session.commit()
+    flash(f'Запрос от {moderation.curator.username} отклонен', 'warning')
+    
+    return redirect(url_for('admin.admin_moderation'))
 
 @admin_bp.route('/tasks')
 @login_required
 @admin_required
 def admin_tasks():
     task_type = request.args.get('type', 'Теория')
-    tasks = Task.query.filter_by(type=task_type).order_by(Task.id.asc()).all()
-    return render_template('admin_tasks.html', tasks=tasks, task_type=task_type)
+    course_id = request.args.get('course_id', None)
+    
+    query = Task.query.filter_by(type=task_type)
+    if course_id:
+        query = query.filter_by(course_id=course_id)
+    
+    tasks = query.order_by(Task.id.asc()).all()
+    courses = Course.query.filter_by(is_active=True).all()
+    
+    return render_template('admin_tasks.html', tasks=tasks, task_type=task_type, 
+                         courses=courses, selected_course_id=course_id)
 
 @admin_bp.route('/tasks/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def admin_tasks_new():
-    form = TaskForm()
+    form = CourseTaskForm()
+    courses = Course.query.filter_by(is_active=True).all()
+    form.course_id.choices = [(0, 'Общий доступ')] + [(c.id, c.title) for c in courses]
+    
     if form.validate_on_submit():
-        new_task = Task(title=form.title.data, description=form.description.data, type=form.type.data)
+        course_id = form.course_id.data if form.course_id.data != 0 else None
+        new_task = Task(
+            title=form.title.data,
+            description=form.description.data,
+            type=form.type.data,
+            course_id=course_id
+        )
         db.session.add(new_task)
         db.session.commit()
         flash("Задача успешно создана", "success")
         return redirect(url_for('admin.admin_tasks'))
+    
     return render_template('admin_task_form.html', form=form, title='Создать новую задачу')
 
 @admin_bp.route('/tasks/<int:id>/edit', methods=['GET', 'POST'])
@@ -60,29 +303,45 @@ def admin_tasks_delete(id):
 @login_required
 @admin_required
 def admin_labs():
-    labs = Lab.query.all()
-    return render_template('admin_labs.html', labs=labs)
+    course_id = request.args.get('course_id', None)
+    
+    query = Lab.query
+    if course_id:
+        query = query.filter_by(course_id=course_id)
+    
+    labs = query.all()
+    courses = Course.query.filter_by(is_active=True).all()
+    
+    return render_template('admin_labs.html', labs=labs, courses=courses, 
+                         selected_course_id=course_id)
 
 @admin_bp.route('/labs/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def admin_labs_new():
-    form = LabForm()
+    form = CourseLabForm()
+    courses = Course.query.filter_by(is_active=True).all()
+    form.course_id.choices = [(0, 'Общий доступ')] + [(c.id, c.title) for c in courses]
+    
     if form.validate_on_submit():
-        full_endpoint = f'/lab/vulnerable/{form.endpoint_suffix.data}'
-        full_flag = f'FLAG{{{form.flag_content.data}}}'
+        course_id = form.course_id.data if form.course_id.data != 0 else None
+        full_endpoint = f'/vulnerable/{form.endpoint.data}' if not form.endpoint.data.startswith('/') else form.endpoint.data
+        full_flag = f'FLAG{{{form.flag.data}}}' if not form.flag.data.startswith('FLAG{') else form.flag.data
+        
         lab = Lab(
             title=form.title.data,
             description=form.description.data,
             difficulty=form.difficulty.data,
             endpoint=full_endpoint,
             flag=full_flag,
-            type=form.type.data
+            type=form.type.data if hasattr(form, 'type') else 'SQL Injection',
+            course_id=course_id
         )
         db.session.add(lab)
         db.session.commit()
         flash('Лабораторная работа создана', 'success')
         return redirect(url_for('admin.admin_labs'))
+    
     return render_template('admin_lab_form.html', form=form, title='Создать лабу')
 
 @admin_bp.route('/labs/<int:id>/edit', methods=['GET', 'POST'])
@@ -178,19 +437,143 @@ def manage_users():
             else:
                 UserTaskProgress.query.filter_by(user_id=user.id).delete()
                 LabProgress.query.filter_by(user_id=user.id).delete()
+                UserCourse.query.filter_by(user_id=user.id).delete()
                 db.session.delete(user)
                 db.session.commit()
                 flash(f'Пользователь {user.username} удалён', 'success')
         elif action == 'toggle_admin':
             user = User.query.get_or_404(user_id)
             user.is_admin = not user.is_admin
+            if user.is_admin:
+                user.role = 'admin'
+            else:
+                user.role = 'student'
             db.session.commit()
             flash(f'Пользователь {user.username} {"назначен админом" if user.is_admin else "снят с должности админа"}',
                   'success')
+        elif action == 'make_curator':
+            user = User.query.get_or_404(user_id)
+            user.role = 'curator'
+            user.is_admin = False
+            db.session.commit()
+            flash(f'Пользователь {user.username} назначен куратором', 'success')
+        elif action == 'make_student':
+            user = User.query.get_or_404(user_id)
+            user.role = 'student'
+            user.is_admin = False
+            db.session.commit()
+            flash(f'Пользователь {user.username} назначен студентом', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Произошла ошибка: {e}', 'danger')
     return redirect(url_for('dashboard'))
+
+
+@admin_bp.route('/users/new', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_users_new():
+    form = RegistrationForm()
+    courses = Course.query.filter_by(is_active=True).all()
+    # Используем строковые значения
+    form.course_ids.choices = [('', 'Без курса (можно назначить позже)')] + [(str(c.id), c.title) for c in courses]
+    
+    if form.validate_on_submit():
+        if User.query.filter_by(username=form.username.data).first():
+            flash("Логин уже занят.", "danger")
+            return render_template('admin_user_form.html', form=form)
+        
+        new_user = User(
+            username=form.username.data, 
+            role=form.role.data,
+            curator_name=form.curator_name.data if form.role.data == 'curator' else None,
+            curator_telegram=form.curator_telegram.data if form.role.data == 'curator' else None,
+            curator_email=form.curator_email.data if form.role.data == 'curator' else None
+        )
+        
+        if form.role.data == 'admin':
+            new_user.is_admin = True
+            
+        new_user.set_password(form.password.data)
+        db.session.add(new_user)
+        db.session.flush()
+        
+        # Привязка к курсу только если выбран конкретный курс
+        if form.course_ids.data and form.course_ids.data != '' and form.course_ids.data.isdigit():
+            course_id = int(form.course_ids.data)
+            user_course = UserCourse(
+                user_id=new_user.id,
+                course_id=course_id,
+                granted_by=current_user.id
+            )
+            db.session.add(user_course)
+        
+        db.session.commit()
+        
+        role_text = {
+            'student': 'студент',
+            'curator': 'куратор',
+            'admin': 'администратор'
+        }.get(form.role.data, 'пользователь')
+        
+        if form.course_ids.data and form.course_ids.data != '' and form.course_ids.data.isdigit():
+            course = Course.query.get(int(form.course_ids.data))
+            flash(f'{role_text.capitalize()} {new_user.username} создан и привязан к курсу "{course.title}"', "success")
+        else:
+            flash(f'{role_text.capitalize()} {new_user.username} создан без привязки к курсу', "success")
+        
+        return redirect(url_for('dashboard'))
+    
+    return render_template('admin_user_form.html', form=form)
+
+
+
+
+@admin_bp.route('/courses/<int:course_id>/assign-curator', methods=['POST'])
+@login_required
+@admin_required
+def assign_curator_to_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    curator_id = request.form.get('curator_id')
+    
+    if not curator_id:
+        flash('Выберите куратора', 'error')
+        return redirect(url_for('admin.admin_courses'))
+    
+    curator = User.query.filter_by(id=curator_id, role='curator').first()
+    if not curator:
+        flash('Выбранный пользователь не является куратором', 'error')
+        return redirect(url_for('admin.admin_courses'))
+    
+    # Проверяем, что у куратора еще нет этого курса
+    if course.curator_id == curator.id:
+        flash(f'Куратор {curator.username} уже назначен на курс "{course.title}"', 'warning')
+        return redirect(url_for('admin.admin_courses'))
+    
+    course.curator_id = curator.id
+    db.session.commit()
+    
+    flash(f'Куратор {curator.username} назначен на курс "{course.title}"', 'success')
+    return redirect(url_for('admin.admin_courses'))
+
+@admin_bp.route('/courses/<int:course_id>/remove-curator', methods=['POST'])
+@login_required
+@admin_required
+def remove_curator_from_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    
+    if not course.curator_id:
+        flash('У курса нет назначенного куратора', 'warning')
+        return redirect(url_for('admin.admin_courses'))
+    
+    curator_name = course.curator.username
+    course.curator_id = None
+    db.session.commit()
+    
+    flash(f'Куратор {curator_name} снят с курса "{course.title}"', 'success')
+    return redirect(url_for('admin.admin_courses'))
+
+
 
 @admin_bp.route('/curator_contacts')
 @login_required
@@ -255,9 +638,12 @@ def admin_database():
             'users': User.query.count(),
             'tasks': Task.query.count(),
             'labs': Lab.query.count(),
+            'courses': Course.query.count(),
+            'user_courses': UserCourse.query.count(),
             'task_progress': UserTaskProgress.query.count(),
             'lab_progress': LabProgress.query.count(),
-            'contacts': CuratorContact.query.count()
+            'contacts': CuratorContact.query.count(),
+            'moderation_queue': CourseModeration.query.filter_by(status='pending').count()
         }
         import os
         db_files = []
@@ -281,6 +667,26 @@ def init_labs_data():
         if Lab.query.count() > 0:
             flash('Лабораторные работы уже существуют!', 'info')
             return redirect(url_for('dashboard'))
+        
+        hacking_course = Course.query.filter_by(title='Основы хакинга и информационной безопасности').first()
+        if not hacking_course:
+            maine_coon = User.query.filter_by(username='MaineCoon').first()
+            if not maine_coon:
+                maine_coon = User(username='MaineCoon', role='curator')
+                maine_coon.set_password('darkschoolmainecoon')
+                db.session.add(maine_coon)
+                db.session.flush()
+            
+            hacking_course = Course(
+                title='Основы хакинга и информационной безопасности',
+                description='Комплексный курс по основам информационной безопасности и этичного хакинга',
+                curator_id=maine_coon.id,
+                creator_id=current_user.id,
+                is_active=True
+            )
+            db.session.add(hacking_course)
+            db.session.flush()
+        
         labs_data = [
             {
                 'title': 'SQL Injection - Обход авторизации',
@@ -288,7 +694,8 @@ def init_labs_data():
                 'difficulty': 'Легко',
                 'type': 'SQL Injection',
                 'endpoint': '/vulnerable/login',
-                'flag': 'FLAG{sql_login_bypass_success}'
+                'flag': 'FLAG{sql_login_bypass_success}',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'SQL Injection - Слепая инъекция',
@@ -296,22 +703,24 @@ def init_labs_data():
                 'difficulty': 'Средне',
                 'type': 'SQL Injection',
                 'endpoint': '/vulnerable/blind',
-                'flag': 'FLAG{blind_sql_injection_master}'
+                'flag': 'FLAG{blind_sql_injection_master}',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'SQL Injection - UNION SELECT',
                 'description': 'Извлечение данных с помощью UNION SELECT',
-                'difficulty': 'Сложный',
+                'difficulty': 'Сложно',
                 'type': 'SQL Injection',
                 'endpoint': '/vulnerable/union',
-                'flag': 'FLAG{union_select_data_extraction}'
+                'flag': 'FLAG{union_select_data_extraction}',
+                'course_id': hacking_course.id
             }
         ]
         for lab_data in labs_data:
             lab = Lab(**lab_data)
             db.session.add(lab)
         db.session.commit()
-        flash(f'Создано {len(labs_data)} лабораторных работ!', 'success')
+        flash(f'Создано {len(labs_data)} лабораторных работ для курса "{hacking_course.title}"!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Ошибка при создании лабораторных работ: {str(e)}', 'error')
@@ -322,84 +731,115 @@ def init_labs_data():
 @admin_required
 def init_test_tasks():
     try:
-        if Task.query.count() > 0:
-            flash('Задачи уже существуют. Очистите базу данных перед добавлением тестовых задач.', 'warning')
-            return redirect(url_for('admin.admin_tasks'))
+        hacking_course = Course.query.filter_by(title='Основы хакинга и информационной безопасности').first()
+        if not hacking_course:
+            maine_coon = User.query.filter_by(username='MaineCoon').first()
+            if not maine_coon:
+                maine_coon = User(username='MaineCoon', role='curator')
+                maine_coon.set_password('darkschoolmainecoon')
+                db.session.add(maine_coon)
+                db.session.flush()
+            
+            hacking_course = Course(
+                title='Основы хакинга и информационной безопасности',
+                description='Комплексный курс по основам информационной безопасности и этичного хакинга',
+                curator_id=maine_coon.id,
+                creator_id=current_user.id,
+                is_active=True
+            )
+            db.session.add(hacking_course)
+            db.session.flush()
+        
         theory_tasks = [
             {
                 'title': 'Задача 1: Найти пользователя по имени (уязвимость SQL-инъекции)',
                 'description': 'Есть таблица users с полями id, username, password. Напишите запрос, который возвращает информацию о пользователе с именем \'admin\'. Важно: попробуйте представить, как может выглядеть уязвимый запрос, если имя пользователя вставляется напрямую в SQL без экранирования. Например, запрос может быть: SELECT * FROM users WHERE username = \'admin\'; Попробуйте написать запрос, который вернёт данные пользователя \'admin\'.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 2: Вход без пароля (SQL-инъекция)',
                 'description': 'В приложении запрос для логина формируется: SELECT * FROM users WHERE username = \'введённое_имя\' AND password = \'введённый_пароль\'; Напишите запрос с SQL-инъекцией, позволяющей войти без пароля.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 3: UNION-инъекция для вывода паролей',
                 'description': 'В таблице products есть поля (id, name, price). Используйте UNION для получения данных из таблицы users (username, password).',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 4: Что такое Kali Linux?',
                 'description': 'Опишите в двух словах, что такое Kali Linux.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 5: Назначение Burp Suite',
                 'description': 'Для чего используется Burp Suite?',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 6: Как защитить SQL-запросы от инъекций?',
                 'description': 'Напишите один способ защиты SQL-запросов от инъекций.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 7: Что такое CSRF атака?',
                 'description': 'Кратко объясните, что такое CSRF атака.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 8: Инструмент для сканирования уязвимостей в Kali Linux',
                 'description': 'Назовите распространённый инструмент для сканирования уязвимостей в Kali Linux.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 9: Как перехватить HTTP запрос в Burp Suite?',
                 'description': 'Опишите один из способов перехвата HTTP запроса в Burp Suite.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 10: SQL выражение для выбора всех записей',
                 'description': 'Напишите SQL запрос, который выбирает все записи из таблицы products.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 11: Какие базовые права у пользователя Linux в Kali?',
                 'description': 'Перечислите базовые права файлов обычного пользователя в Kali Linux.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 12: Как включить режим перехвата в Burp Suite?',
                 'description': 'Где обычно в Burp Suite можно включить режим перехвата?',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 13: Значение оператора LIKE в SQL',
                 'description': 'Что делает оператор LIKE в SQL?',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 14: Способ проверки пароля в Python',
                 'description': 'Как проверить пароль пользователя безопасно в Python?',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             },
             {
                 'title': 'Задача 15: Что такое XSS атака?',
                 'description': 'Кратко опишите XSS атаку.',
-                'type': 'Теория'
+                'type': 'Теория',
+                'course_id': hacking_course.id
             }
         ]
         for task_data in theory_tasks:
@@ -407,11 +847,12 @@ def init_test_tasks():
                 title=task_data['title'],
                 description=task_data['description'],
                 type=task_data['type'],
+                course_id=task_data['course_id'],
                 created_at=datetime.utcnow()
             )
             db.session.add(task)
         db.session.commit()
-        flash(f'Успешно добавлено {len(theory_tasks)} теоретических задач!', 'success')
+        flash(f'Успешно добавлено {len(theory_tasks)} теоретических задач для курса "{hacking_course.title}"!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Ошибка при создании тестовых задач: {e}', 'error')
@@ -465,8 +906,11 @@ def clear_all_database():
     try:
         UserTaskProgress.query.delete()
         LabProgress.query.delete()
+        UserCourse.query.delete()
+        CourseModeration.query.delete()
         Task.query.delete()
         Lab.query.delete()
+        Course.query.delete()
         CuratorContact.query.delete()
         User.query.filter(User.id != current_user.id).delete()
         db.session.commit()
@@ -535,6 +979,7 @@ def clear_users():
     try:
         UserTaskProgress.query.filter(UserTaskProgress.user_id != current_user.id).delete()
         LabProgress.query.filter(LabProgress.user_id != current_user.id).delete()
+        UserCourse.query.filter(UserCourse.user_id != current_user.id).delete()
         User.query.filter(User.id != current_user.id).delete()
         db.session.commit()
         flash('Все пользователи (кроме вас) удалены', 'success')
@@ -613,21 +1058,12 @@ def backup_database():
         flash(f'Ошибка создания резервной копии: {e}', 'error')
     return redirect(url_for('admin.admin_database'))
 
-@admin_bp.route('/users/new', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def admin_users_new():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        if User.query.filter_by(username=form.username.data).first():
-            flash("Логин уже занят.", "danger")
-            return render_template('admin_user_form.html', form=form)
-        
-        new_user = User(username=form.username.data)
-        new_user.set_password(form.password.data)
-        db.session.add(new_user)
-        db.session.commit()
-        flash(f"Пользователь {new_user.username} создан", "success")
-        return redirect(url_for('dashboard'))
-    
-    return render_template('admin_user_form.html', form=form)
+
+
+
+
+
+
+
+
+

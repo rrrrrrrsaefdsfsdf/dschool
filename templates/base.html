@@ -28,7 +28,6 @@
       <div class="company-name">Dark.school | Practice</div>
     </a>
   </div>
-  
   <nav class="nav-links" id="nav-links">
     <a href="{{ url_for('index') }}">
         <i class="fas fa-home"></i> Главная
@@ -42,6 +41,16 @@
                 <div class="nav-dropdown-menu">
                     <a href="{{ url_for('dashboard') }}">
                         <i class="fas fa-tachometer-alt"></i> Панель управления
+                    </a>
+                    <hr class="dropdown-divider">
+                    <a href="{{ url_for('admin.admin_courses') }}">
+                        <i class="fas fa-book"></i> Курсы
+                    </a>
+                    <a href="{{ url_for('admin.admin_user_courses') }}">
+                        <i class="fas fa-user-graduate"></i> Доступ к курсам
+                    </a>
+                    <a href="{{ url_for('admin.admin_moderation') }}">
+                        <i class="fas fa-gavel"></i> Модерация
                     </a>
                     <hr class="dropdown-divider">
                     <a href="{{ url_for('admin.admin_tasks') }}">
@@ -59,41 +68,69 @@
                         <i class="fas fa-database"></i> База данных
                     </a>
                     <a href="{{ url_for('admin.curator_contacts') }}">
-                        <i class="fas fa-address-book"></i> Контакты куратора
+                        <i class="fas fa-address-book"></i> Контакты кураторов
                     </a>
                 </div>
             </div>
-                <div class="nav-dropdown">
-                    <a href="#" class="nav-dropdown-toggle">
-                        <i class="fas fa-bolt"></i> Быстрые действия <i class="fas fa-chevron-down"></i>
+            <div class="nav-dropdown">
+                <a href="#" class="nav-dropdown-toggle">
+                    <i class="fas fa-bolt"></i> Быстрые действия <i class="fas fa-chevron-down"></i>
+                </a>
+                <div class="nav-dropdown-menu">
+                    <h6 class="dropdown-header">Создать</h6>
+                    <a href="{{ url_for('admin.admin_courses_new') }}">
+                        <i class="fas fa-plus"></i> Новый курс
                     </a>
-                    <div class="nav-dropdown-menu">
-                        <a href="{{ url_for('admin.admin_tasks_new') }}">
-                            <i class="fas fa-plus"></i> Создать задачу
-                        </a>
-                        <a href="{{ url_for('admin.admin_users_new') }}">
-                            <i class="fas fa-plus"></i> Создать пользователя
-                        </a>
-                        <a href="{{ url_for('admin.new_curator_contact') }}">
-                            <i class="fas fa-user-plus"></i> Добавить контакт
-                        </a>
-                        <hr class="dropdown-divider">
-                        <a href="{{ url_for('admin.init_labs_data') }}">
-                            <i class="fas fa-magic"></i> Создать тестовые лабы
-                        </a>
-                        <a href="{{ url_for('admin.init_test_tasks') }}">
-                            <i class="fas fa-file-alt"></i> Создать тестовые задачи
-                        </a>
-                    </div>
+                    <a href="{{ url_for('admin.admin_tasks_new') }}">
+                        <i class="fas fa-plus"></i> Новая задача
+                    </a>
+                    <a href="{{ url_for('admin.admin_labs_new') }}">
+                        <i class="fas fa-plus"></i> Новая лаба
+                    </a>
+                    <a href="{{ url_for('admin.admin_users_new') }}">
+                        <i class="fas fa-user-plus"></i> Новый пользователь
+                    </a>
+                    <a href="{{ url_for('admin.new_curator_contact') }}">
+                        <i class="fas fa-address-book"></i> Новый контакт куратора
+                    </a>
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Инициализация</h6>
+                    <a href="{{ url_for('admin.init_labs_data') }}">
+                        <i class="fas fa-magic"></i> Создать тестовые лабы
+                    </a>
+                    <a href="{{ url_for('admin.init_test_tasks') }}">
+                        <i class="fas fa-file-alt"></i> Создать тестовые задачи
+                    </a>
+                    <a href="{{ url_for('admin.init_vulnerable_db') }}">
+                        <i class="fas fa-database"></i> Инициализировать уязвимую БД
+                    </a>
                 </div>
+            </div>
+        {% elif current_user.role == 'curator' %}
+            <div class="nav-dropdown">
+                <a href="#" class="nav-dropdown-toggle">
+                    <i class="fas fa-users-cog"></i> Кураторство <i class="fas fa-chevron-down"></i>
+                </a>
+                <div class="nav-dropdown-menu">
+                    <a href="{{ url_for('curator.review_answers') }}">
+                        <i class="fas fa-clipboard-check"></i> Проверка ответов
+                    </a>
+                    <a href="{{ url_for('curator.view_students') }}">
+                        <i class="fas fa-user-graduate"></i> Мои студенты
+                    </a>
+                    <a href="{{ url_for('curator.edit_profile') }}">
+                        <i class="fas fa-user-edit"></i> Мой профиль
+                    </a>
+                </div>
+            </div>
         {% endif %}
-          <a href="{{ url_for('dashboard') }}">
-                <i class="fas fa-user"></i> Личный кабинет
-            </a>
+        <a href="{{ url_for('dashboard') }}">
+            <i class="fas fa-user"></i> Личный кабинет
+        </a>
         <a href="{{ url_for('course') }}">
             <i class="fas fa-graduation-cap"></i> Курсы
         </a>
-        <a href="{{ url_for('curator') }}">
+        <a href="{{ url_for('contacts') }}">
             <i class="fas fa-headset"></i> Куратор
         </a>
         <a href="{{ url_for('auth.logout') }}" class="logout-link">
@@ -108,7 +145,6 @@
         </a>
     {% endif %}
   </nav>
-  
   <button class="navbar-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-links">
     <span></span>
     <span></span>
@@ -143,29 +179,23 @@ body {
     margin: 0;
     padding: 0;
 }
-
 body::-webkit-scrollbar {
     width: 8px;
 }
-
 body::-webkit-scrollbar-track {
     background: #f1f1f1;
 }
-
 body::-webkit-scrollbar-thumb {
     background: #888;
     border-radius: 4px;
 }
-
 body::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
-
 .alert {
     margin-bottom: 0;
     border-radius: 0;
 }
-
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -175,29 +205,24 @@ body::-webkit-scrollbar-thumb:hover {
     color: white;
     position: relative;
 }
-
 main {
     margin-top: 0;
     padding-top: 0;
 }
-
 .navbar-left {
     display: flex;
     align-items: center;
     flex-shrink: 0;
     z-index: 1001;
 }
-
 .company-gif {
     height: 40px;
     margin-right: 10px;
 }
-
 .company-name {
     font-size: 1.2rem;
     font-weight: bold;
 }
-
 .navbar-toggle {
     display: none;
     flex-direction: column;
@@ -212,7 +237,6 @@ main {
     justify-content: center;
     align-items: center;
 }
-
 .navbar-toggle span {
     width: 22px;
     height: 2px;
@@ -222,19 +246,15 @@ main {
     display: block;
     transform-origin: center;
 }
-
 .navbar-toggle.active span:nth-child(1) {
     transform: rotate(45deg) translate(5px, 5px);
 }
-
 .navbar-toggle.active span:nth-child(2) {
     opacity: 0;
 }
-
 .navbar-toggle.active span:nth-child(3) {
     transform: rotate(-45deg) translate(5px, -5px);
 }
-
 .nav-links {
     display: flex;
     align-items: center;
@@ -243,7 +263,6 @@ main {
     padding: 0;
     list-style: none;
 }
-
 .nav-links a {
     color: white;
     text-decoration: none;
@@ -254,17 +273,14 @@ main {
     align-items: center;
     white-space: nowrap;
 }
-
 .nav-links a:hover {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
 }
-
 .nav-dropdown {
     position: relative;
     display: inline-block;
 }
-
 .nav-dropdown-toggle {
     display: flex !important;
     align-items: center;
@@ -274,29 +290,27 @@ main {
     border-radius: 4px;
     transition: background-color 0.3s;
 }
-
 .nav-dropdown-toggle:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
-
 .nav-dropdown-menu {
     display: none;
     position: absolute;
     top: 100%;
     right: 0;
-    min-width: 220px;
+    min-width: 250px;
     background-color: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     overflow: hidden;
+    max-height: 400px;
+    overflow-y: auto;
 }
-
 .nav-dropdown:hover .nav-dropdown-menu {
     display: block;
 }
-
 .nav-dropdown-menu a {
     display: block !important;
     padding: 10px 16px;
@@ -306,62 +320,62 @@ main {
     border-bottom: 1px solid #f0f0f0;
     transition: background-color 0.3s;
 }
-
 .nav-dropdown-menu a:last-child {
     border-bottom: none;
 }
-
 .nav-dropdown-menu a:hover {
     background-color: #f8f9fa;
     color: #007bff !important;
 }
-
 .nav-dropdown-menu .dropdown-divider {
     margin: 0;
     border-color: #e9ecef;
 }
-
+.nav-dropdown-menu .dropdown-header {
+    color: #6c757d !important;
+    font-weight: bold;
+    font-size: 12px;
+    text-transform: uppercase;
+    padding: 8px 16px 4px 16px;
+    margin: 0;
+    background-color: #f8f9fa;
+    border-bottom: none;
+}
 .nav-dropdown-menu a[href*="admin"] {
     border-left: 3px solid #007bff;
 }
-
 .nav-dropdown-menu a[href*="/admin/database"] {
     border-left: 3px solid #28a745;
 }
-
-.nav-dropdown-menu a[href*="template"] {
+.nav-dropdown-menu a[href*="curator"] {
     border-left: 3px solid #6f42c1;
 }
-
+.nav-dropdown-menu a[href*="init"] {
+    border-left: 3px solid #ffc107;
+}
 .logout-link {
     color: #dc3545 !important;
     margin-left: 10px;
 }
-
 .logout-link:hover {
     background-color: rgba(220, 53, 69, 0.1) !important;
 }
-
 .nav-links i {
     margin-right: 6px;
     width: 16px;
     text-align: center;
 }
-
 @media (max-width: 768px) {
     .navbar {
         position: relative;
     }
-    
     .navbar-toggle {
         display: flex;
         order: 3;
     }
-    
     .navbar-left {
         order: 1;
     }
-    
     .nav-links {
         display: none;
         position: absolute;
@@ -379,27 +393,22 @@ main {
         border-radius: 0 0 0 8px;
         order: 2;
     }
-    
     .nav-links.active {
         display: flex;
     }
-    
     .nav-links a {
         padding: 12px 16px;
         margin: 2px 0;
         width: 100%;
         justify-content: flex-start;
     }
-    
     .nav-dropdown {
         width: 100%;
     }
-    
     .nav-dropdown-toggle {
         width: 100%;
         justify-content: space-between;
     }
-    
     .nav-dropdown-menu {
         position: static;
         display: none;
@@ -410,79 +419,77 @@ main {
         margin-top: 5px;
         border-radius: 4px;
         right: auto;
+        max-height: 300px;
     }
-    
     .nav-dropdown:hover .nav-dropdown-menu {
         display: none;
     }
-    
     .nav-dropdown.active .nav-dropdown-menu {
         display: block;
     }
-    
     .nav-dropdown-menu a {
         padding: 8px 20px !important;
         font-size: 13px;
     }
-    
+    .nav-dropdown-menu .dropdown-header {
+        padding: 6px 20px 4px 20px !important;
+        font-size: 11px;
+    }
     .company-name {
         font-size: 1rem;
     }
-    
     .company-gif {
         height: 35px;
     }
 }
-
 @media (max-width: 480px) {
     .navbar {
         padding: 0.8rem;
     }
-    
     .company-name {
         font-size: 0.9rem;
     }
-    
     .company-gif {
         height: 30px;
         margin-right: 8px;
     }
-    
     .nav-links {
         padding: 0.8rem;
         max-height: 60vh;
         width: 260px;
     }
-    
     .nav-links a {
         padding: 10px 12px;
         font-size: 14px;
     }
-    
     .nav-dropdown-menu a {
         padding: 6px 16px !important;
         font-size: 12px;
     }
+    .nav-dropdown-menu .dropdown-header {
+        padding: 4px 16px 2px 16px !important;
+        font-size: 10px;
+    }
 }
-
-.nav-links::-webkit-scrollbar {
+.nav-links::-webkit-scrollbar,
+.nav-dropdown-menu::-webkit-scrollbar {
     width: 4px;
 }
-
-.nav-links::-webkit-scrollbar-track {
+.nav-links::-webkit-scrollbar-track,
+.nav-dropdown-menu::-webkit-scrollbar-track {
     background: #333;
 }
-
-.nav-links::-webkit-scrollbar-thumb {
+.nav-links::-webkit-scrollbar-thumb,
+.nav-dropdown-menu::-webkit-scrollbar-thumb {
     background: #666;
     border-radius: 2px;
 }
-
-.nav-links::-webkit-scrollbar-thumb:hover {
+.nav-links::-webkit-scrollbar-thumb:hover,
+.nav-dropdown-menu::-webkit-scrollbar-thumb:hover {
     background: #888;
 }
-
-.nav-links {
+.nav-links,
+.nav-dropdown-menu {
     scrollbar-width: thin;
     scrollbar-color: #666 #333;
 }
@@ -491,30 +498,25 @@ main {
 document.addEventListener('DOMContentLoaded', function() {
     const navbarToggle = document.querySelector('.navbar-toggle');
     const navLinks = document.querySelector('.nav-links');
-    
     if (navbarToggle && navLinks) {
         navbarToggle.addEventListener('click', function(e) {
             e.stopPropagation();
             navLinks.classList.toggle('active');
             this.classList.toggle('active');
-            
             const isExpanded = this.classList.contains('active');
             this.setAttribute('aria-expanded', isExpanded);
         });
-        
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.navbar')) {
                 navLinks.classList.remove('active');
                 navbarToggle.classList.remove('active');
                 navbarToggle.setAttribute('aria-expanded', 'false');
-                
                 document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
                     dropdown.classList.remove('active');
                 });
             }
         });
     }
-
     const dropdownToggles = document.querySelectorAll('.nav-dropdown-toggle');
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
@@ -523,7 +525,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation();
                 const dropdown = this.closest('.nav-dropdown');
                 dropdown.classList.toggle('active');
-                
                 dropdownToggles.forEach(otherToggle => {
                     if (otherToggle !== this) {
                         otherToggle.closest('.nav-dropdown').classList.remove('active');
@@ -532,13 +533,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-
     window.addEventListener('resize', function() {
         if (window.innerWidth > 768) {
             navLinks.classList.remove('active');
             navbarToggle.classList.remove('active');
             navbarToggle.setAttribute('aria-expanded', 'false');
-            
             document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
                 dropdown.classList.remove('active');
             });

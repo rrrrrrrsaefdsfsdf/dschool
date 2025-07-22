@@ -1,53 +1,155 @@
 {% extends "base.html" %}
-
-{% block title %}Создать пользователя{% endblock %}
-
+{% block title %}Создание пользователя{% endblock %}
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
+<div class="container mt-4">
+    <h2><i class="fas fa-user-plus"></i> Создание нового пользователя</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="row">
+        <div class="col-md-8">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    {{ form.username.label(class="form-label") }}
+                    {{ form.username(class="form-control", placeholder="Введите логин пользователя") }}
+                    {% if form.username.errors %}
+                        <div class="text-danger small">
+                            {% for error in form.username.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.password.label(class="form-label") }}
+                    {{ form.password(class="form-control", placeholder="Минимум 6 символов") }}
+                    {% if form.password.errors %}
+                        <div class="text-danger small">
+                            {% for error in form.password.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.role.label(class="form-label") }}
+                    {{ form.role(class="form-select", id="roleSelect") }}
+                </div>
+
+                <!-- Поля для кураторов -->
+                <div id="curatorFields" style="display: none;">
+                    <div class="card border-info mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-address-book"></i> Контактная информация куратора (необязательно)</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info small">
+                                <i class="fas fa-info-circle"></i> 
+                                Эти данные можно заполнить позже. Контакты будут видны только студентам курсов куратора.
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.curator_name.label(class="form-label") }}
+                                {{ form.curator_name(class="form-control", placeholder="Имя для студентов") }}
+                                <div class="form-text">Как к куратору будут обращаться студенты</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.curator_telegram.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">@</span>
+                                    {{ form.curator_telegram(class="form-control", placeholder="username") }}
+                                </div>
+                                <div class="form-text">Telegram без символа @</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.curator_email.label(class="form-label") }}
+                                {{ form.curator_email(class="form-control", placeholder="curator@example.com") }}
+                                <div class="form-text">Email для связи со студентами</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.course_ids.label(class="form-label") }}
+                    {{ form.course_ids(class="form-select", id="courseSelect") }}
+                    <div class="form-text" id="courseHelp">
+                        <i class="fas fa-info-circle"></i> 
+                        <span id="courseHelpText">Можно создать пользователя без курса и назначить курсы позже через "Доступы к курсам"</span>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    {{ form.submit(class="btn btn-success") }}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card bg-light">
                 <div class="card-header">
-                    <h4>Создать нового пользователя</h4>
+                    <h6><i class="fas fa-info-circle"></i> Информация</h6>
                 </div>
-                <div class="card-body">
-                    <form method="POST">
-                        {{ form.hidden_tag() }}
-                        
-                        <div class="mb-3">
-                            {{ form.username.label(class="form-label") }}
-                            {{ form.username(class="form-control") }}
-                            {% if form.username.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.username.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            {{ form.password.label(class="form-label") }}
-                            {{ form.password(class="form-control") }}
-                            {% if form.password.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.password.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="d-grid">
-                            {{ form.submit(class="btn btn-primary") }}
-                        </div>
-                    </form>
+                    
+                    <h6 class="mt-3">Быстрые ссылки:</h6>
+                    <div class="d-grid gap-1">
+                        <a href="{{ url_for('admin.admin_user_courses') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-users"></i> Доступы к курсам
+                        </a>
+                        <a href="{{ url_for('admin.admin_courses') }}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-graduation-cap"></i> Управление курсами
+                        </a>
+                    </div>
                 </div>
-            </div>
-            <div class="text-center mt-3">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Назад</a>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('roleSelect');
+    const curatorFields = document.getElementById('curatorFields');
+    const courseSelect = document.getElementById('courseSelect');
+    const courseHelpText = document.getElementById('courseHelpText');
+    
+    function toggleCuratorFields() {
+        if (roleSelect.value === 'curator') {
+            curatorFields.style.display = 'block';
+            updateCourseHelp();
+        } else {
+            curatorFields.style.display = 'none';
+            updateCourseHelp();
+        }
+    }
+    
+    function updateCourseHelp() {
+        if (roleSelect.value === 'curator') {
+            courseHelpText.innerHTML = 'Для кураторов: выбор курса предоставит доступ как студенту. Назначение куратором на курс происходит отдельно в "Управление курсами"';
+        } else {
+            courseHelpText.innerHTML = 'Можно создать пользователя без курса и назначить курсы позже через "Доступы к курсам"';
+        }
+    }
+    
+    roleSelect.addEventListener('change', toggleCuratorFields);
+    toggleCuratorFields(); // Проверяем при загрузке
+});
+</script>
 {% endblock %}

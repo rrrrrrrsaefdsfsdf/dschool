@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Модерация курсов{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-gavel"></i> Модерация изменений курсов</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if requests %}
+        <div class="row">
+            {% for req in requests %}
+            <div class="col-md-6 mb-3">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0">
+                            <i class="fas fa-user-tie"></i> {{ req.curator.username }} 
+                            <small class="float-end">{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Курс:</strong> {{ req.course.title }}</p>
+                        <p><strong>Тип изменения:</strong> 
+                            {% if req.change_type == 'add_task' %}
+                                <span class="badge bg-success">Добавление задачи</span>
+                            {% elif req.change_type == 'edit_task' %}
+                                <span class="badge bg-info">Редактирование задачи</span>
+                            {% elif req.change_type == 'add_lab' %}
+                                <span class="badge bg-danger">Добавление лабы</span>
+                            {% elif req.change_type == 'edit_lab' %}
+                                <span class="badge bg-warning">Редактирование лабы</span>
+                            {% endif %}
+                        </p>
+                        
+                        {% if req.change_data %}
+                        <div class="bg-light p-2 rounded mb-3">
+                            <small><strong>Данные изменения:</strong></small>
+                            <pre class="small mb-0">{{ req.change_data | tojson(indent=2) }}</pre>
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form method="POST" action="{{ url_for('admin.approve_moderation', id=req.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-2">
+                                        <textarea name="admin_comment" class="form-control form-control-sm" 
+                                                  placeholder="Комментарий (необязательно)" rows="2"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                        <i class="fas fa-check"></i> Одобрить
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <form method="POST" action="{{ url_for('admin.reject_moderation', id=req.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-2">
+                                        <textarea name="admin_comment" class="form-control form-control-sm" 
+                                                  placeholder="Причина отклонения" rows="2" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger btn-sm w-100">
+                                        <i class="fas fa-times"></i> Отклонить
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Нет заявок на модерацию
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад в панель управления
+        </a>
+    </div>
+</div>
+{% endblock %}

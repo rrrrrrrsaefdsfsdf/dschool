@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Доступы к курсам{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-users-cog"></i> Управление доступами к курсам</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Форма предоставления доступа -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h6><i class="fas fa-plus"></i> Предоставить доступ к курсу</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.grant_user_course_access') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <select name="user_id" class="form-select" required>
+                            <option value="">Выберите пользователя</option>
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="course_id" class="form-select" required>
+                            <option value="">Выберите курс</option>
+                            {% for course in courses %}
+                                <option value="{{ course.id }}">{{ course.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Предоставить доступ
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Таблица текущих доступов -->
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Пользователь</th>
+                    <th>Роль</th>
+                    <th>Доступные курсы</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>
+                        {% if user.is_admin %}
+                            <span class="badge bg-success">Админ</span>
+                        {% elif user.role == 'curator' %}
+                            <span class="badge bg-warning">Куратор</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Студент</span>
+                        {% endif %}
+                    </td>
+                    <td>
+    {% set user_courses = user.user_courses %}
+    {% if user_courses %}
+        {% for uc in user_courses %}
+            <span class="badge bg-info me-1">{{ uc.course.title }}</span>
+        {% endfor %}
+    {% else %}
+        <span class="text-muted">Нет доступов</span>
+    {% endif %}
+</td>
+<td>
+    {% if user.user_courses %}
+        <div class="btn-group btn-group-sm">
+            {% for uc in user.user_courses %}
+            <form method="POST" action="{{ url_for('admin.revoke_user_course_access') }}" 
+                  style="display:inline-block;" 
+                  onsubmit="return confirm('Отозвать доступ к курсу {{ uc.course.title }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_id" value="{{ user.id }}">
+                <input type="hidden" name="course_id" value="{{ uc.course.id }}">
+                <button type="submit" class="btn btn-outline-danger btn-sm" 
+                        title="Отозвать доступ к {{ uc.course.title }}">
+                    <i class="fas fa-minus"></i> {{ uc.course.title }}
+                </button>
+            </form>
+            {% endfor %}
+        </div>
+    {% endif %}
+</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад в панель управления
+        </a>
+    </div>
+</div>
+{% endblock %}

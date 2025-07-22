@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Управление курсом: {{ course.title }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-graduation-cap"></i> {{ course.title }}</h2>
+            <p class="text-muted">{{ course.description }}</p>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Панель быстрых действий -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6><i class="fas fa-tasks"></i> Задачи</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Всего задач: <strong>{{ tasks|length }}</strong></p>
+                    <a href="{{ url_for('curator.new_task', course_id=course.id) }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h6><i class="fas fa-flask"></i> Лабораторные работы</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Всего лаб: <strong>{{ labs|length }}</strong></p>
+                    <a href="{{ url_for('curator.new_lab', course_id=course.id) }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Добавить лабу
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ожидающие модерацию изменения -->
+    {% if pending_moderations %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h6><i class="fas fa-hourglass-half"></i> Ожидают модерации ({{ pending_moderations|length }})</h6>
+        </div>
+        <div class="card-body">
+            {% for mod in pending_moderations %}
+            <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>
+                        {% if mod.change_type == 'add_task' %}
+                            Добавление задачи: {{ mod.change_data.title }}
+                        {% elif mod.change_type == 'edit_task' %}
+                            Редактирование задачи: {{ mod.change_data.title }}
+                        {% elif mod.change_type == 'add_lab' %}
+                            Добавление лабы: {{ mod.change_data.title }}
+                        {% elif mod.change_type == 'edit_lab' %}
+                            Редактирование лабы: {{ mod.change_data.title }}
+                        {% endif %}
+                    </strong>
+                    <br><small class="text-muted">Отправлено: {{ mod.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+                <form method="POST" action="{{ url_for('curator.cancel_moderation', moderation_id=mod.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" 
+                            onclick="return confirm('Отменить запрос на модерацию?')">
+                        <i class="fas fa-times"></i> Отменить
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Список задач -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6><i class="fas fa-tasks"></i> Задачи курса</h6>
+        </div>
+        <div class="card-body">
+            {% if tasks %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr>
+                                <td><span class="badge bg-secondary">#{{ task.id }}</span></td>
+                                <td>{{ task.title }}</td>
+                                <td><span class="badge bg-info">{{ task.type }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('curator.edit_task', course_id=course.id, task_id=task.id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-edit"></i> Редактировать
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">В курсе пока нет задач.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Список лаб -->
+    <div class="card">
+        <div class="card-header">
+            <h6><i class="fas fa-flask"></i> Лабораторные работы курса</h6>
+        </div>
+        <div class="card-body">
+            {% if labs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Сложность</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lab in labs %}
+                            <tr>
+                                <td><span class="badge bg-secondary">#{{ lab.id }}</span></td>
+                                <td>{{ lab.title }}</td>
+                                <td><span class="badge bg-danger">{{ lab.type }}</span></td>
+                                <td>
+                                    {% if lab.difficulty == 'Легко' %}
+                                        <span class="badge bg-success">{{ lab.difficulty }}</span>
+                                    {% elif lab.difficulty == 'Средне' %}
+                                        <span class="badge bg-warning">{{ lab.difficulty }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ lab.difficulty }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('curator.edit_lab', course_id=course.id, lab_id=lab.id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-edit"></i> Редактировать
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">В курсе пока нет лабораторных работ.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

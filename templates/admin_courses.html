@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Управление курсами{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-graduation-cap"></i> Управление курсами</h2>
+        <a href="{{ url_for('admin.admin_courses_new') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Создать курс
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if courses %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>Куратор</th>
+                        <th>Статус</th>
+                        <th>Задач</th>
+                        <th>Лаб</th>
+                        <th>Студентов</th>
+                        <th>Создан</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                    <tr {% if not course.is_active %}class="table-secondary"{% endif %}>
+                        <td><span class="badge bg-primary">#{{ course.id }}</span></td>
+                        <td>
+                            <strong>{{ course.title }}</strong>
+                            {% if course.description %}
+                            <br><small class="text-muted">{{ course.description[:100] }}...</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if course.curator %}
+                                <span class="badge bg-warning">{{ course.curator.username }}</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Без куратора</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if course.is_active %}
+                                <span class="badge bg-success">Активный</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Неактивный</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ course.tasks|length if course.tasks else 0 }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger">{{ course.labs|length if course.labs else 0 }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ course.enrolled_users|length if course.enrolled_users else 0 }}</span>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {% if course.created_at %}
+                                    {{ course.created_at.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    Не указано
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('admin.admin_courses_edit', id=course.id) }}" 
+                                   class="btn btn-outline-primary" 
+                                   title="Редактировать курс">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('admin.admin_courses_delete', id=course.id) }}" 
+                                      style="display:inline-block;" 
+                                      onsubmit="return confirm('Удалить курс \'{{ course.title }}\'? Это действие нельзя отменить!');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger" 
+                                            title="Удалить курс">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Курсов пока нет. 
+            <a href="{{ url_for('admin.admin_courses_new') }}">Создайте первый курс</a>
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад в панель управления
+        </a>
+    </div>
+</div>
+{% endblock %}

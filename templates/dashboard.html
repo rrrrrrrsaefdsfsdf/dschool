@@ -5,6 +5,7 @@
   <div class="card shadow-sm p-4 mb-4">
     <h2>Привет, {{ user.username }}!</h2>
     <p>Добро пожаловать в личный кабинет.</p>
+    
     {% if user.is_admin and stats %}
       <hr>
       <h4>Админ-панель — Статистика</h4>
@@ -21,6 +22,10 @@
               <span class="badge bg-success rounded-pill">{{ stats.admin_count }}</span>
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center">
+              Кураторов
+              <span class="badge bg-warning rounded-pill">{{ stats.curator_count }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
               Новых за 24 часа
               <span class="badge bg-info rounded-pill">{{ stats.new_users_day }}</span>
             </li>
@@ -34,6 +39,10 @@
           <h6>📚 Контент</h6>
           <ul class="list-group mb-3">
             <li class="list-group-item d-flex justify-content-between align-items-center">
+              Всего курсов
+              <span class="badge bg-purple rounded-pill">{{ stats.total_courses }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
               Всего задач
               <span class="badge bg-primary rounded-pill">{{ stats.total_tasks }}</span>
             </li>
@@ -46,22 +55,44 @@
               <span class="badge bg-warning rounded-pill">{{ answers|length }}</span>
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center">
-              Контактов куратора
-              <span class="badge bg-info rounded-pill">{{ curator_contacts|length if curator_contacts else 0 }}</span>
+              Заявок на модерацию
+              <span class="badge bg-danger rounded-pill">{{ stats.moderation_queue }}</span>
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center">
-              Всего записей в БД
-              <span class="badge bg-dark rounded-pill">{{ (stats.total_users + stats.total_tasks + stats.total_labs) }}</span>
+              Контактов куратора
+              <span class="badge bg-info rounded-pill">{{ curator_contacts|length if curator_contacts else 0 }}</span>
             </li>
           </ul>
         </div>
       </div>
       <h4>🚀 Быстрые действия</h4>
       <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="card h-100">
-            <div class="card-header">
-              <h6>📝 Задачи</h6>
+            <div class="card-header bg-info text-white">
+              <h6><i class="fas fa-graduation-cap"></i> Курсы</h6>
+            </div>
+            <div class="card-body">
+              <a class="btn btn-info btn-sm mb-2 w-100" href="{{ url_for('admin.admin_courses') }}">
+                <i class="fas fa-book"></i> Управление курсами
+              </a>
+              <a class="btn btn-success btn-sm mb-2 w-100" href="{{ url_for('admin.admin_user_courses') }}">
+                <i class="fas fa-users"></i> Доступы к курсам
+              </a>
+              <a class="btn btn-warning btn-sm w-100" href="{{ url_for('admin.admin_moderation') }}">
+                <i class="fas fa-gavel"></i> Модерация
+                {% if stats.moderation_queue > 0 %}
+                <span class="badge bg-danger">{{ stats.moderation_queue }}</span>
+                {% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+              <h6><i class="fas fa-tasks"></i> Задачи</h6>
             </div>
             <div class="card-body">
               <a class="btn btn-primary btn-sm mb-2 w-100" href="{{ url_for('admin.admin_tasks') }}">
@@ -69,24 +100,28 @@
               </a>
               <a class="btn btn-warning btn-sm mb-2 w-100" href="{{ url_for('admin.admin_answers') }}">
                 <i class="fas fa-clipboard-check"></i> Проверка ответов
+                {% if answers|length > 0 %}
+                <span class="badge bg-danger">{{ answers|length }}</span>
+                {% endif %}
               </a>
               <a class="btn btn-success btn-sm w-100" href="{{ url_for('admin.init_test_tasks') }}">
-                <i class="fas fa-book"></i> Создать теоретические задачи
+                <i class="fas fa-book-open"></i> Создать теоретические
               </a>
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+        
+        <div class="col-md-4">
           <div class="card h-100">
-            <div class="card-header">
-              <h6>🧪 Лаборатории</h6>
+            <div class="card-header bg-danger text-white">
+              <h6><i class="fas fa-flask"></i> Лаборатории</h6>
             </div>
             <div class="card-body">
               <a class="btn btn-danger btn-sm mb-2 w-100" href="{{ url_for('admin.admin_labs') }}">
                 <i class="fas fa-flask"></i> Управление лабами
               </a>
               <a class="btn btn-warning btn-sm mb-2 w-100" href="{{ url_for('admin.init_labs_data') }}">
-                <i class="fas fa-vial"></i> Создать практические лабы
+                <i class="fas fa-vial"></i> Создать практические
               </a>
               <a class="btn btn-secondary btn-sm w-100" href="{{ url_for('admin.init_vulnerable_db') }}">
                 <i class="fas fa-database"></i> Инициализировать БД
@@ -94,33 +129,32 @@
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+      </div>
+      <div class="row mb-4">
+        <div class="col-md-6">
           <div class="card h-100">
-            <div class="card-header">
-              <h6>🛠️ Система</h6>
+            <div class="card-header bg-dark text-white">
+              <h6><i class="fas fa-cogs"></i> Система</h6>
             </div>
             <div class="card-body">
-                <a class="btn btn-dark btn-sm mb-2 w-100" href="{{ url_for('admin.admin_database') }}">
-                    <i class="fas fa-database"></i> Управление БД
-                </a>
-                <div class="mb-3">
-                    <a href="{{ url_for('admin.admin_users_new') }}" class="btn btn-success">
-                        <i class="fas fa-user-plus"></i> Создать пользователя
-                    </a>
-                </div>
-            </div>
+              <a class="btn btn-dark btn-sm mb-2 w-100" href="{{ url_for('admin.admin_database') }}">
+                <i class="fas fa-database"></i> Управление БД
+              </a>
+              <a class="btn btn-success btn-sm w-100" href="{{ url_for('admin.admin_users_new') }}">
+                <i class="fas fa-user-plus"></i> Создать пользователя
               </a>
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+        
+        <div class="col-md-6">
           <div class="card h-100">
-            <div class="card-header">
-              <h6>📞 Контакты</h6>
+            <div class="card-header bg-success text-white">
+              <h6><i class="fas fa-phone"></i> Контакты</h6>
             </div>
             <div class="card-body">
               <a class="btn btn-outline-success btn-sm w-100" href="{{ url_for('admin.new_curator_contact') }}">
-                <i class="fas fa-plus"></i> Добавить контакт
+                <i class="fas fa-plus"></i> Добавить контакт куратора
               </a>
             </div>
           </div>
@@ -137,6 +171,7 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
+      
       {% if users %}
         <div class="table-responsive">
           <table class="table table-hover table-sm">
@@ -144,7 +179,8 @@
               <tr>
                 <th>ID</th>
                 <th>Логин</th>
-                <th>Статус</th>
+                <th>Роль</th>
+                <th>Курсы</th>
                 <th>Задач решено</th>
                 <th>Лаб решено</th>
                 <th>Регистрация</th>
@@ -155,18 +191,27 @@
             <tbody>
               {% for u in users %}
                 {% set user_lab_count = solved_lab_counts[u.id] if solved_lab_counts and u.id in solved_lab_counts else 0 %}
-                <tr {% if u.is_admin %}class="table-warning"{% endif %}>
+                <tr {% if u.is_admin %}class="table-warning"{% elif u.role == 'curator' %}class="table-info"{% endif %}>
                   <td><span class="badge bg-secondary">#{{ u.id }}</span></td>
                   <td>
-
                     <strong>{{ u.username }}</strong>
                     {% if u.id == user.id %}<small class="text-primary">(это вы)</small>{% endif %}
                   </td>
                   <td>
                     {% if u.is_admin %}
                       <span class="badge bg-success"><i class="fas fa-crown"></i> Админ</span>
+                    {% elif u.role == 'curator' %}
+                      <span class="badge bg-warning"><i class="fas fa-chalkboard-teacher"></i> Куратор</span>
                     {% else %}
-                      <span class="badge bg-secondary"><i class="fas fa-user"></i> Пользователь</span>
+                      <span class="badge bg-secondary"><i class="fas fa-user"></i> Студент</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% set user_courses = u.accessible_courses %}
+                    {% if user_courses %}
+                      <span class="badge bg-info">{{ user_courses|length }}</span>
+                    {% else %}
+                      <span class="badge bg-light text-dark">0</span>
                     {% endif %}
                   </td>
                   <td>
@@ -185,12 +230,43 @@
                         <input name="action" type="hidden" value="toggle_admin">
                         <button
                           type="submit"
-                          class="btn btn-outline-primary btn-sm"
+                          class="btn btn-outline-{{ 'warning' if u.is_admin else 'success' }} btn-sm"
                           {% if u.id == user.id %}disabled title="Нельзя изменить свои права"{% endif %}
+                          title="{{ 'Снять админа' if u.is_admin else 'Сделать админом' }}"
                         >
                           <i class="fas fa-{{ 'user-minus' if u.is_admin else 'user-plus' }}"></i>
                         </button>
                       </form>
+                      
+                      {% if u.role != 'curator' and not u.is_admin %}
+                      <form method="post" action="{{ url_for('admin.manage_users') }}" style="display:inline-block;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="user_id" type="hidden" value="{{ u.id }}">
+                        <input name="action" type="hidden" value="make_curator">
+                        <button
+                          type="submit"
+                          class="btn btn-outline-info btn-sm"
+                          {% if u.id == user.id %}disabled title="Нельзя изменить свою роль"{% endif %}
+                          title="Сделать куратором"
+                        >
+                          <i class="fas fa-chalkboard-teacher"></i>
+                        </button>
+                      </form>
+                      {% elif u.role == 'curator' %}
+                      <form method="post" action="{{ url_for('admin.manage_users') }}" style="display:inline-block;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="user_id" type="hidden" value="{{ u.id }}">
+                        <input name="action" type="hidden" value="make_student">
+                        <button
+                          type="submit"
+                          class="btn btn-outline-secondary btn-sm"
+                          title="Сделать студентом"
+                        >
+                          <i class="fas fa-user"></i>
+                        </button>
+                      </form>
+                      {% endif %}
+                      
                       <form method="post" action="{{ url_for('admin.manage_users') }}" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');" style="display:inline-block;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input name="user_id" type="hidden" value="{{ u.id }}">
@@ -263,6 +339,122 @@
         {% endfor %}
       </div>
       {% endif %}
+    {% elif user.role == 'curator' %}
+      <hr>
+      <h4><i class="fas fa-chalkboard-teacher"></i> Панель куратора</h4>
+      
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> 
+        Как куратор, вы можете управлять содержимым ваших курсов и проверять ответы студентов. 
+        Все изменения проходят модерацию администратором.
+      </div>
+      
+      {% if curator_stats %}
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card text-center border-primary">
+            <div class="card-body">
+              <h5 class="card-title text-primary">{{ curator_stats.total_students }}</h5>
+              <p class="card-text">Ваших студентов</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-warning">
+            <div class="card-body">
+              <h5 class="card-title text-warning">{{ curator_stats.pending_answers }}</h5>
+              <p class="card-text">Ответов на проверке</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-success">
+            <div class="card-body">
+              <h5 class="card-title text-success">{{ curator_stats.total_tasks }}</h5>
+              <p class="card-text">Задач в ваших курсах</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-danger">
+            <div class="card-body">
+              <h5 class="card-title text-danger">{{ curator_stats.total_labs }}</h5>
+              <p class="card-text">Лаб в ваших курсах</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+              <h6><i class="fas fa-clipboard-check"></i> Проверка ответов</h6>
+            </div>
+            <div class="card-body">
+              <a class="btn btn-warning btn-sm mb-2 w-100" href="{{ url_for('curator.review_answers') }}">
+                <i class="fas fa-clipboard-check"></i> Проверить ответы
+                {% if curator_stats and curator_stats.pending_answers > 0 %}
+                <span class="badge bg-danger">{{ curator_stats.pending_answers }}</span>
+                {% endif %}
+              </a>
+              <a class="btn btn-info btn-sm w-100" href="{{ url_for('curator.view_students') }}">
+                <i class="fas fa-users"></i> Мои студенты
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-info text-white">
+              <h6><i class="fas fa-graduation-cap"></i> Управление курсами</h6>
+            </div>
+            <div class="card-body">
+              {% set curator_courses = user.curated_courses %}
+              {% if curator_courses %}
+                {% for course in curator_courses %}
+                <a href="{{ url_for('curator.manage_course', course_id=course.id) }}" 
+                   class="btn btn-outline-info btn-sm mb-2 w-100">
+                  <i class="fas fa-book"></i> {{ course.title[:25] }}{% if course.title|length > 25 %}...{% endif %}
+                </a>
+                {% endfor %}
+              {% else %}
+                <p class="text-muted small">У вас пока нет курсов</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% set curator_courses = user.curated_courses %}
+      {% if curator_courses %}
+        <h5>Ваши курсы:</h5>
+        <div class="row mb-3">
+          {% for course in curator_courses %}
+          <div class="col-md-4 mb-3">
+            <div class="card border-info">
+              <div class="card-header bg-info text-white">
+                <h6 class="mb-0">{{ course.title }}</h6>
+              </div>
+              <div class="card-body">
+                <p class="card-text small">{{ course.description[:100] }}...</p>
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('curator.manage_course', course_id=course.id) }}" class="btn btn-info btn-sm">
+                    <i class="fas fa-edit"></i> Управление
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle"></i> 
+          У вас пока нет назначенных курсов. Обратитесь к администратору.
+        </div>
+      {% endif %}
     {% else %}
       <div class="row mt-4">
         <div class="col-md-12">
@@ -294,6 +486,37 @@
           </div>
         </div>
       </div>
+      {% set student_courses = user.accessible_courses %}
+      {% if student_courses %}
+      <div class="row mt-4">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header">
+              <h5><i class="fas fa-graduation-cap"></i> Ваши курсы</h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                {% for course in student_courses %}
+                <div class="col-md-4 mb-3">
+                  <div class="card border-success h-100">
+                    <div class="card-body">
+                      <h6 class="card-title">{{ course.title }}</h6>
+                      <p class="card-text small">{{ course.description[:80] }}...</p>
+                      <div class="d-grid">
+                        <a href="{{ url_for('index', course_id=course.id) }}" class="btn btn-success btn-sm">
+                          Перейти к заданиям
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
       <div class="row mt-4">
         <div class="col-md-4">
           <a class="btn btn-primary w-100 mb-2" href="{{ url_for('index') }}">
@@ -301,7 +524,7 @@
           </a>
         </div>
         <div class="col-md-4">
-          <a class="btn btn-info w-100 mb-2" href="{{ url_for('curator') }}">
+          <a class="btn btn-info w-100 mb-2" href="{{ url_for('contacts') }}">
             <i class="fas fa-headset"></i> Связаться с куратором
           </a>
         </div>
@@ -318,27 +541,25 @@
     </div>
   </div>
 </div>
-
 <style>
 .card {
   transition: transform 0.2s;
 }
-
 .card:hover {
   transform: translateY(-2px);
 }
-
 .table-hover tbody tr:hover {
   background-color: rgba(0,0,0,.075);
 }
-
 .btn-group-sm .btn {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
 }
-
 .contact-details {
   min-height: 50px;
+}
+.bg-purple {
+  background-color: #6f42c1 !important;
 }
 </style>
 {% endblock %}

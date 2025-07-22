@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Проверка ответов студентов{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-clipboard-check"></i> Проверка ответов студентов</h2>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад
+        </a>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">{{ stats.total_pending }}</h5>
+                    <p class="card-text">Всего на проверке</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center border-info">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ stats.theory_pending }}</h5>
+                    <p class="card-text">Теория</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <h5 class="card-title text-success">{{ stats.practice_pending }}</h5>
+                    <p class="card-text">Практика</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6><i class="fas fa-filter"></i> Фильтры</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <select name="type" class="form-select" onchange="this.form.submit()">
+                        <option value="">Все типы задач</option>
+                        <option value="Теория" {% if selected_type == 'Теория' %}selected{% endif %}>Теория</option>
+                        <option value="Практика" {% if selected_type == 'Практика' %}selected{% endif %}>Практика</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select name="course_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">Все курсы</option>
+                        {% for course in curator_courses %}
+                        <option value="{{ course.id }}" {% if selected_course_id == course.id|string %}selected{% endif %}>
+                            {{ course.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    {% if selected_type or selected_course_id %}
+                    <a href="{{ url_for('curator.review_answers') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Сбросить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Список ответов -->
+    {% if answers %}
+        {% for answer in answers %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ answer.user.username }}</strong> | 
+                    <span class="badge bg-{{ 'info' if answer.task.type == 'Теория' else 'success' }}">
+                        {{ answer.task.type }}
+                    </span>
+                    | {{ answer.task.course.title }}
+                </div>
+                <small class="text-muted">
+                    {{ answer.created_at.strftime('%Y-%m-%d %H:%M') if answer.created_at else 'Неизвестно' }}
+                </small>
+            </div>
+            <div class="card-body">
+                <h6 class="card-title">{{ answer.task.title }}</h6>
+                <div class="mb-3">
+                    <strong>Задание:</strong>
+                    <div class="bg-light p-3 rounded">
+                        {{ answer.task.description }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <strong>Ответ студента:</strong>
+                    <div class="bg-info bg-opacity-10 p-3 rounded border-start border-info border-4">
+                        {{ answer.user_answer }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ url_for('curator.approve_answer', answer_id=answer.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Одобрить
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('curator.reject_answer', answer_id=answer.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times"></i> Отклонить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>Нет ответов на проверке</h5>
+                <p class="text-muted">
+                    {% if selected_type or selected_course_id %}
+                        Попробуйте изменить фильтры или студенты еще не отправили ответы.
+                    {% else %}
+                        Все ответы проверены или студенты еще не отправили решения.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

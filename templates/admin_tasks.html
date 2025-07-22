@@ -8,9 +8,9 @@
             <i class="fas fa-plus"></i> Создать новую задачу
         </a>
     </div>
-
+    
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">📊 Статистика задач</h5>
@@ -27,7 +27,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">⚡ Быстрые действия</h5>
@@ -43,17 +43,49 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">🎯 Фильтры</h5>
+                    <form method="get" class="d-flex flex-column gap-2">
+                        <select name="course_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">Все курсы</option>
+                            <option value="0" {% if selected_course_id == '0' %}selected{% endif %}>Без курса</option>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}" {% if selected_course_id == course.id|string %}selected{% endif %}>
+                                {{ course.title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if selected_course_id %}
+                        <a href="{{ url_for('admin.admin_tasks') }}?type={{ task_type }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times"></i> Сбросить фильтр
+                        </a>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-
+    
     <div class="card">
         <div class="card-header">
             <form method="get" class="d-flex align-items-center gap-3">
+                {% if selected_course_id %}
+                <input type="hidden" name="course_id" value="{{ selected_course_id }}">
+                {% endif %}
                 <label for="taskTypeSelect" class="form-label mb-0">Фильтр по типу:</label>
                 <select id="taskTypeSelect" name="type" class="form-select w-auto" onchange="this.form.submit()">
                     <option value="Теория" {% if task_type == 'Теория' %}selected{% endif %}>📖 Теория</option>
                     <option value="Практика" {% if task_type == 'Практика' %}selected{% endif %}>💻 Практика</option>
                 </select>
-                <span class="badge bg-secondary ms-auto">{{ tasks|length }} задач</span>
+                <span class="badge bg-secondary ms-auto">
+                    {{ tasks|length }} задач
+                    {% if selected_course_id %}
+                        {% set course_name = courses|selectattr('id', 'equalto', selected_course_id|int)|first %}
+                        {% if course_name %}из курса "{{ course_name.title }}"{% endif %}
+                    {% endif %}
+                </span>
             </form>
         </div>
         <div class="card-body">
@@ -64,6 +96,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Заголовок</th>
+                        <th>Курс</th>
                         <th>Тип</th>
                         <th>Описание</th>
                         <th>Дата создания</th>
@@ -76,13 +109,30 @@
                         <td><span class="badge bg-primary">#{{ task.id }}</span></td>
                         <td><strong>{{ task.title }}</strong></td>
                         <td>
+                            {% if task.course %}
+                                <span class="badge bg-success course-badge" title="{{ task.course.title }}">
+                                    <i class="fas fa-graduation-cap me-1"></i>
+                                    {{ task.course.title[:15] }}{% if task.course.title|length > 15 %}...{% endif %}
+                                </span>
+                                {% if task.course.curator %}
+                                <br><small class="text-muted">
+                                    <i class="fas fa-user-tie"></i> {{ task.course.curator.username }}
+                                </small>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-globe"></i> Общая
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if task.type == 'Теория' %}
                                 <span class="badge bg-info"><i class="fas fa-book"></i> {{ task.type }}</span>
                             {% else %}
                                 <span class="badge bg-success"><i class="fas fa-laptop-code"></i> {{ task.type }}</span>
                             {% endif %}
                         </td>
-                        <td><small>{{ task.description|truncate(80) }}</small></td>
+                        <td><small>{{ task.description|truncate(60) }}</small></td>
                         <td><small>{{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
                         <td>
                             <div class="btn-group" role="group">
@@ -91,6 +141,7 @@
                                 </a>
                                 <form action="{{ url_for('admin.admin_tasks_delete', id=task.id) }}" method="post"
                                       onsubmit="return confirm('Удалить задачу {{ task.title }}?');" style="display:inline-block;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="btn btn-sm btn-outline-danger" type="submit" title="Удалить">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -105,20 +156,61 @@
             {% else %}
             <div class="text-center py-5">
                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                <h5>Задач пока нет</h5>
-                <p class="text-muted">Создайте первую задачу для студентов</p>
-                <a class="btn btn-primary" href="{{ url_for('admin.admin_tasks_new') }}">
-                    <i class="fas fa-plus"></i> Создать задачу
-                </a>
+                <h5>Задач пока нет
+                    {% if selected_course_id %}
+                        в выбранном курсе
+                    {% endif %}
+                </h5>
+                <p class="text-muted">
+                    {% if selected_course_id %}
+                        Создайте задачу для этого курса или выберите другой курс.
+                    {% else %}
+                        Создайте первую задачу для студентов
+                    {% endif %}
+                </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a class="btn btn-primary" href="{{ url_for('admin.admin_tasks_new') }}">
+                        <i class="fas fa-plus"></i> Создать задачу
+                    </a>
+                    {% if not selected_course_id %}
+                    <a class="btn btn-success" href="{{ url_for('admin.init_test_tasks') }}">
+                        <i class="fas fa-magic"></i> Создать тестовые
+                    </a>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
         </div>
     </div>
-
+    
     <div class="mt-4">
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Назад в панель управления
         </a>
     </div>
 </div>
+
+<style>
+.course-badge {
+    font-size: 0.7rem;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+
+@media (max-width: 768px) {
+    .table {
+        font-size: 0.875rem;
+    }
+    .course-badge {
+        max-width: 80px;
+    }
+    .btn-group .btn {
+        padding: 0.25rem 0.35rem;
+        font-size: 0.75rem;
+    }
+}
+</style>
 {% endblock %}

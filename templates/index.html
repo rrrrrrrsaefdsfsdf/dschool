@@ -10,6 +10,14 @@
             <div class="col-md-8">
               <h4 class="mb-2 fw-bold">📚 Задачи и лабораторные работы</h4>
               <p class="mb-0 opacity-75">Изучайте информационную безопасность на практике</p>
+              <div id="courseInfo" class="course-info-banner mt-3" style="display: none;">
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-graduation-cap me-2"></i>
+                  <span class="course-title fw-bold me-3" id="courseName"></span>
+                  <i class="fas fa-user-tie me-1"></i>
+                  <span class="curator-name" id="curatorName"></span>
+                </div>
+              </div>
             </div>
             <div class="col-md-4">
               <div class="task-type-selector">
@@ -37,10 +45,20 @@
           <div class="row g-0">
             <div class="col-lg-4 border-end bg-light">
               <div class="task-list-header p-3 border-bottom bg-white">
-                <h6 class="mb-0 text-muted fw-bold text-uppercase">
-                  <i class="fas fa-list me-2"></i>
-                  <span id="taskListTitle">Доступные задачи</span>
-                </h6>
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0 text-muted fw-bold text-uppercase">
+                    <i class="fas fa-list me-2"></i>
+                    <span id="taskListTitle">Доступные задачи</span>
+                  </h6>
+                  <div class="task-counter">
+                    <span class="badge bg-primary" id="taskCounter">0</span>
+                  </div>
+                </div>
+                <div id="courseSelector" class="mt-2" style="display: none;">
+                  <select class="form-select form-select-sm" id="courseFilter">
+                    <option value="">Все курсы</option>
+                  </select>
+                </div>
               </div>
               <div class="tasks-list-container p-2" style="max-height: 70vh; overflow-y: auto;">
                 <div class="list-group" id="tasksList"></div>
@@ -49,10 +67,19 @@
             <div class="col-lg-8">
               <div class="task-content-area p-4" id="taskContent" style="display: none;">
                 <div class="task-header mb-4">
-                  <h3 class="mb-3 text-primary fw-bold" id="taskTitle"></h3>
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h3 class="mb-0 text-primary fw-bold" id="taskTitle"></h3>
+                    <div class="task-course-badge" id="taskCourseBadge" style="display: none;">
+                      <span class="badge bg-success px-3 py-1">
+                        <i class="fas fa-book me-1"></i>
+                        <span id="taskCourse"></span>
+                      </span>
+                    </div>
+                  </div>
                   <div class="task-meta d-flex gap-2 mb-3">
                     <span class="badge bg-info px-3 py-2" id="taskType"></span>
                     <span class="badge bg-secondary px-3 py-2" id="taskStatus"></span>
+                    <span class="badge bg-warning px-3 py-2" id="taskDifficulty" style="display: none;"></span>
                   </div>
                 </div>
                 <div class="task-description-wrapper mb-4">
@@ -122,6 +149,31 @@
                 </div>
                 <h3 class="text-dark mb-3">Выберите задачу для начала</h3>
                 <p class="text-muted mb-4">Выберите задачу из списка слева или переключитесь между типами заданий</p>
+                {% if current_user.accessible_courses %}
+                <div class="available-courses mb-4">
+                  <h5 class="text-center mb-3">Ваши доступные курсы:</h5>
+                  <div class="row justify-content-center">
+                    {% for course in current_user.accessible_courses %}
+                    <div class="col-md-4 mb-3">
+                      <div class="course-card card border-success h-100">
+                        <div class="card-body text-center p-3">
+                          <div class="card-icon mb-2">
+                            <i class="fas fa-graduation-cap fa-2x text-success"></i>
+                          </div>
+                          <h6 class="card-title text-success mb-2">{{ course.title }}</h6>
+                          {% if course.curator %}
+                          <p class="card-text small text-muted mb-2">
+                            <i class="fas fa-user-tie me-1"></i>{{ course.curator.username }}
+                          </p>
+                          {% endif %}
+                          <p class="card-text small">{{ course.description[:60] }}...</p>
+                        </div>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
                 <div class="row justify-content-center g-3">
                   <div class="col-md-4">
                     <div class="welcome-card card border-primary border-2 card-hover h-100">
@@ -204,6 +256,33 @@
   background: rgba(255,255,255,0.25) !important;
   border-color: #fff !important;
   box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+}
+.course-info-banner {
+  background: rgba(255,255,255,0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(5px);
+}
+.course-title {
+  font-size: 0.9rem;
+}
+.curator-name {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.task-counter {
+  min-width: 24px;
+}
+.course-card {
+  transition: all 0.2s ease;
+  border-width: 2px;
+}
+.course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.task-course-badge {
+  flex-shrink: 0;
 }
 .tasks-list-container::-webkit-scrollbar {
   width: 6px;
@@ -340,6 +419,9 @@
   .welcome-card .card-body {
     padding: 1.5rem;
   }
+  .course-info-banner {
+    font-size: 0.8rem;
+  }
 }
 </style>
 <script>
@@ -366,6 +448,37 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+function updateCourseInfo(courseName, curatorName) {
+    const courseInfo = document.getElementById('courseInfo');
+    const courseNameEl = document.getElementById('courseName');
+    const curatorNameEl = document.getElementById('curatorName');
+    
+    if (courseName && curatorName) {
+        courseNameEl.textContent = courseName;
+        curatorNameEl.textContent = curatorName;
+        courseInfo.style.display = 'block';
+    } else {
+        courseInfo.style.display = 'none';
+    }
+}
+
+function updateTaskCourse(courseName) {
+    const taskCourseBadge = document.getElementById('taskCourseBadge');
+    const taskCourse = document.getElementById('taskCourse');
+    
+    if (courseName) {
+        taskCourse.textContent = courseName;
+        taskCourseBadge.style.display = 'block';
+    } else {
+        taskCourseBadge.style.display = 'none';
+    }
+}
+
+function updateTaskCounter(count) {
+    const counter = document.getElementById('taskCounter');
+    counter.textContent = count || 0;
+}
 
 function switchToPractice() {
     document.getElementById('btnPractice').classList.add('active');
