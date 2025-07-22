@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% block title %}Живые логи - Администрирование{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-broadcast-tower text-danger"></i> Живые логи системы</h2>
+                <div class="btn-group">
+                    <button id="toggleBtn" class="btn btn-warning btn-sm">
+                        <i class="fas fa-pause"></i> Пауза
+                    </button>
+                    <a href="{{ url_for('admin.view_logs') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-chart-line"></i> Все логи
+                    </a>
+                    <button id="clearViewBtn" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-eraser"></i> Очистить экран
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="card text-white" style="background: linear-gradient(45deg, #28a745, #20c997);">
+                        <div class="card-body py-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-circle fa-lg me-2" id="statusIcon"></i>
+                                <div>
+                                    <div class="small">Статус</div>
+                                    <div id="status" class="fw-bold">Активно</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-white" style="background: linear-gradient(45deg, #17a2b8, #007bff);">
+                        <div class="card-body py-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-counter fa-lg me-2"></i>
+                                <div>
+                                    <div class="small">Загружено логов</div>
+                                    <div id="loadedCount" class="fw-bold">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-white" style="background: linear-gradient(45deg, #007bff, #6610f2);">
+                        <div class="card-body py-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-clock fa-lg me-2"></i>
+                                <div>
+                                    <div class="small">Последнее обновление</div>
+                                    <div id="lastUpdate" class="fw-bold">—</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-stream"></i> Поток логов в реальном времени
+                        </h6>
+                        <div class="d-flex align-items-center">
+                            <small class="me-3">Обновляется автоматически каждые 2 секунды</small>
+                            <div class="spinner-border spinner-border-sm text-light" role="status" id="loadingSpinner">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="logsContainer" style="height: 65vh; overflow-y: auto; background: linear-gradient(to bottom, #f8f9fa, #ffffff);">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th style="width: 140px;" class="text-center">
+                                        <i class="fas fa-clock"></i> Время
+                                    </th>
+                                    <th style="width: 160px;" class="text-center">
+                                        <i class="fas fa-user"></i> Пользователь
+                                    </th>
+                                    <th style="width: 180px;" class="text-center">
+                                        <i class="fas fa-cog"></i> Действие
+                                    </th>
+                                    <th>
+                                        <i class="fas fa-comment-alt"></i> Описание
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTable">
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="fas fa-satellite-dish fa-3x mb-3 text-secondary"></i>
+                                            <h5>Ожидание логов...</h5>
+                                            <p>Новые записи будут появляться автоматически</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="row text-center">
+                        <div class="col">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Отображаются последние 100 записей. Новые записи добавляются сверху.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let isActive = true;
+let lastLogId = 0;
+let updateInterval;
+let loadedLogsCount = 0;
+let isEmpty = true;
+
+function updateLogs() {
+    if (!isActive) return;
+    
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'inline-block';
+    
+    fetch('/admin/api/logs/recent?since_id=' + lastLogId + '&limit=50')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.logs && data.logs.length > 0) {
+                if (isEmpty) {
+                    document.getElementById('logsTable').innerHTML = '';
+                    isEmpty = false;
+                }
+                
+                data.logs.reverse().forEach(function(log) {
+                    addLogRow(log);
+                    lastLogId = Math.max(lastLogId, log.id);
+                    loadedLogsCount++;
+                });
+                
+                updateLoadedCount();
+            }
+            
+            updateLastUpdate();
+            setStatus('success', 'Активно');
+        })
+        .catch(function(error) {
+            console.error('Ошибка загрузки логов:', error);
+            setStatus('error', 'Ошибка подключения');
+        })
+        .finally(function() {
+            spinner.style.display = 'none';
+        });
+}
+
+function addLogRow(log) {
+    const tbody = document.getElementById('logsTable');
+    const row = document.createElement('tr');
+    row.className = 'align-middle log-entry';
+    
+    let userBadgeClass = 'bg-secondary';
+    let userIcon = 'fas fa-user';
+    
+    if (log.user !== 'Аноним') {
+        if (log.action_type.includes('admin')) {
+            userBadgeClass = 'bg-danger';
+            userIcon = 'fas fa-crown';
+        } else if (log.action_type.includes('curator')) {
+            userBadgeClass = 'bg-warning text-dark';
+            userIcon = 'fas fa-user-tie';
+        }
+    } else {
+        userIcon = 'fas fa-user-secret';
+        userBadgeClass = 'bg-dark';
+    }
+    
+    let actionBadgeClass = 'bg-primary';
+    let actionIcon = 'fas fa-cog';
+    
+    if (log.action_type.includes('login') && !log.action_type.includes('failed')) {
+        actionBadgeClass = 'bg-success';
+        actionIcon = 'fas fa-sign-in-alt';
+    } else if (log.action_type.includes('logout')) {
+        actionBadgeClass = 'bg-secondary';
+        actionIcon = 'fas fa-sign-out-alt';
+    } else if (log.action_type.includes('failed') || log.action_type.includes('error')) {
+        actionBadgeClass = 'bg-danger';
+        actionIcon = 'fas fa-exclamation-triangle';
+    } else if (log.action_type.includes('admin')) {
+        actionBadgeClass = 'bg-danger';
+        actionIcon = 'fas fa-shield-alt';
+    } else if (log.action_type.includes('curator')) {
+        actionBadgeClass = 'bg-warning text-dark';
+        actionIcon = 'fas fa-chalkboard-teacher';
+    } else if (log.action_type.includes('success')) {
+        actionBadgeClass = 'bg-success';
+        actionIcon = 'fas fa-check';
+    } else if (log.action_type.includes('submit')) {
+        actionBadgeClass = 'bg-primary';
+        actionIcon = 'fas fa-paper-plane';
+    } else if (log.action_type.includes('visit') || log.action_type.includes('access')) {
+        actionBadgeClass = 'bg-info';
+        actionIcon = 'fas fa-eye';
+    }
+    
+    row.innerHTML = 
+        '<td class="text-center">' +
+            '<small class="text-muted font-monospace">' + log.time + '</small>' +
+        '</td>' +
+        '<td class="text-center">' +
+            '<span class="badge ' + userBadgeClass + ' rounded-pill">' +
+                '<i class="' + userIcon + '"></i> ' + log.user +
+            '</span>' +
+        '</td>' +
+        '<td class="text-center">' +
+            '<span class="badge ' + actionBadgeClass + ' rounded-pill">' +
+                '<i class="' + actionIcon + '"></i> ' + log.action_type +
+            '</span>' +
+        '</td>' +
+        '<td>' +
+            '<small class="text-dark">' + log.description + '</small>' +
+        '</td>';
+    
+    tbody.insertBefore(row, tbody.firstChild);
+    
+    while (tbody.children.length > 100) {
+        tbody.removeChild(tbody.lastChild);
+    }
+    
+    row.style.background = 'linear-gradient(90deg, #d4edda, #ffffff)';
+    row.style.borderLeft = '4px solid #28a745';
+    
+    setTimeout(function() {
+        row.style.background = '';
+        row.style.borderLeft = '';
+    }, 3000);
+}
+
+function setStatus(type, message) {
+    const status = document.getElementById('status');
+    const icon = document.getElementById('statusIcon');
+    const parentCard = status.closest('.card');
+    
+    if (type === 'success') {
+        parentCard.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+        icon.className = 'fas fa-circle fa-lg me-2';
+    } else if (type === 'warning') {
+        parentCard.style.background = 'linear-gradient(45deg, #ffc107, #fd7e14)';
+        icon.className = 'fas fa-circle fa-lg me-2';
+    } else if (type === 'error') {
+        parentCard.style.background = 'linear-gradient(45deg, #dc3545, #e91e63)';
+        icon.className = 'fas fa-circle fa-lg me-2';
+    }
+    
+    status.textContent = message;
+}
+
+function updateLoadedCount() {
+    document.getElementById('loadedCount').textContent = loadedLogsCount.toLocaleString();
+    
+    const countElement = document.getElementById('loadedCount');
+    countElement.style.transform = 'scale(1.1)';
+    setTimeout(function() {
+        countElement.style.transform = 'scale(1)';
+    }, 200);
+}
+
+function updateLastUpdate() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    document.getElementById('lastUpdate').textContent = timeString;
+}
+
+function toggleUpdates() {
+    isActive = !isActive;
+    const btn = document.getElementById('toggleBtn');
+    
+    if (isActive) {
+        btn.innerHTML = '<i class="fas fa-pause"></i> Пауза';
+        btn.className = 'btn btn-warning btn-sm';
+        setStatus('success', 'Активно');
+        startUpdates();
+    } else {
+        btn.innerHTML = '<i class="fas fa-play"></i> Запустить';
+        btn.className = 'btn btn-success btn-sm';
+        setStatus('warning', 'Приостановлено');
+        clearInterval(updateInterval);
+    }
+}
+
+function clearView() {
+    const tbody = document.getElementById('logsTable');
+    tbody.innerHTML = 
+        '<tr>' +
+            '<td colspan="4" class="text-center py-5 text-muted">' +
+                '<div class="d-flex flex-column align-items-center">' +
+                    '<i class="fas fa-broom fa-3x mb-3 text-secondary"></i>' +
+                    '<h5>Экран очищен</h5>' +
+                    '<p>Новые записи будут появляться автоматически</p>' +
+                '</div>' +
+            '</td>' +
+        '</tr>';
+    isEmpty = true;
+    loadedLogsCount = 0;
+    updateLoadedCount();
+}
+
+function startUpdates() {
+    updateLogs();
+    updateInterval = setInterval(updateLogs, 2000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('toggleBtn').addEventListener('click', toggleUpdates);
+    document.getElementById('clearViewBtn').addEventListener('click', clearView);
+    
+    setStatus('success', 'Инициализация...');
+    startUpdates();
+    
+    fetch('/admin/api/logs/recent?limit=20')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.logs && data.logs.length > 0) {
+                document.getElementById('logsTable').innerHTML = '';
+                isEmpty = false;
+                
+                data.logs.forEach(function(log) {
+                    addLogRow(log);
+                    lastLogId = Math.max(lastLogId, log.id);
+                    loadedLogsCount++;
+                });
+                
+                updateLoadedCount();
+            }
+        })
+        .catch(function(error) {
+            console.error('Ошибка загрузки начальных логов:', error);
+        });
+});
+</script>
+
+<style>
+.log-entry {
+    transition: all 0.3s ease;
+}
+
+#logsContainer::-webkit-scrollbar {
+    width: 8px;
+}
+
+#logsContainer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#logsContainer::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#logsContainer::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+</style>
+{% endblock %}

@@ -5,6 +5,9 @@ from extensions import db
 from forms import CuratorProfileForm, TaskForm, LabForm
 from models import LabProgress, User, Task, Lab, Course, CourseModeration, UserCourse, UserTaskProgress
 from utils import get_lab_db
+from logging_utils import log_curator_action
+
+
 
 curator_bp = Blueprint('curator', __name__, url_prefix='/curator')
 
@@ -46,13 +49,17 @@ def manage_course(course_id):
                          labs=labs,
                          pending_moderations=pending_moderations)
 
+
+
+
+
+
 @curator_bp.route('/course/<int:course_id>/task/new', methods=['GET', 'POST'])
 @login_required
 @curator_required
 def new_task(course_id):
     course = Course.query.get_or_404(course_id)
     
-    # Проверяем права доступа
     if not current_user.is_admin and course.curator_id != current_user.id:
         flash('У вас нет доступа к этому курсу', 'error')
         return redirect(url_for('dashboard'))
@@ -60,7 +67,6 @@ def new_task(course_id):
     form = TaskForm()
     
     if form.validate_on_submit():
-        # Создаем запрос на модерацию для добавления задачи
         moderation_data = {
             'title': form.title.data,
             'description': form.description.data,
@@ -79,13 +85,28 @@ def new_task(course_id):
         db.session.add(moderation)
         db.session.commit()
         
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+        log_curator_action(
+            'request_add_task',
+            f'Запрос на добавление задачи "{form.title.data}" в курс "{course.title}"',
+            target_type='course',
+            target_id=course_id,
+            additional_data={
+                'task_title': form.title.data,
+                'task_type': form.type.data,
+                'moderation_id': moderation.id
+            }
+        )
+        
         flash('Запрос на добавление задачи отправлен на модерацию', 'success')
         return redirect(url_for('curator.manage_course', course_id=course_id))
     
-    return render_template('curator/task_form.html', 
-                         form=form, 
-                         course=course, 
-                         title='Создать новую задачу')
+    return render_template('curator/task_form.html', form=form, course=course, title='Создать новую задачу')
+
+# Аналогично добавь логирование в другие функции куратора...
+
+
+
 
 @curator_bp.route('/course/<int:course_id>/task/<int:task_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -273,7 +294,6 @@ def cancel_moderation(moderation_id):
 def approve_answer(answer_id):
     answer = UserTaskProgress.query.get_or_404(answer_id)
     
-    # Проверяем права доступа
     if answer.task.course_id not in [c.id for c in current_user.curated_courses]:
         flash('У вас нет прав для проверки этого ответа', 'error')
         return redirect(url_for('curator.review_answers'))
@@ -285,11 +305,28 @@ def approve_answer(answer_id):
     answer.is_checked = True
     answer.is_approved = True
     answer.checked_at = datetime.utcnow()
-    
     db.session.commit()
+    
+    # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+    log_curator_action(
+        'approve_student_answer',
+        f'Одобрен ответ студента {answer.user.username} по задаче "{answer.task.title}"',
+        target_type='task',
+        target_id=answer.task_id,
+        additional_data={
+            'student_id': answer.user_id,
+            'student_username': answer.user.username,
+            'course_id': answer.task.course_id,
+            'answer_text': answer.user_answer[:100] if answer.user_answer else None
+        }
+    )
     
     flash(f'Ответ студента {answer.user.username} по задаче "{answer.task.title}" одобрен!', 'success')
     return redirect(url_for('curator.review_answers'))
+
+
+
+
 
 @curator_bp.route('/answer/<int:answer_id>/reject', methods=['POST'])
 @login_required
@@ -463,3 +500,128 @@ def edit_profile():
         return redirect(url_for('dashboard'))
     
     return render_template('curator/edit_profile.html', form=form)
+
+
+
+
+
+
+
+
+from forms import CuratorCreateStudentForm  # добавь этот импорт в начало файла
+
+
+
+
+
+
+
+@curator_bp.route('/create-student', methods=['GET', 'POST'])
+@login_required
+@curator_required
+def create_student():
+    form = CuratorCreateStudentForm()
+    
+    curator_courses = current_user.curated_courses
+    form.course_ids.choices = [(c.id, c.title) for c in curator_courses]
+    
+    if not curator_courses:
+        flash('У вас нет курсов для создания студентов', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if form.validate_on_submit():
+        existing_user = User.query.filter_by(username=form.username.data).first()
+        if existing_user:
+            flash('Пользователь с таким логином уже существует', 'error')
+            return render_template('curator/create_student.html', form=form)
+        
+        selected_course = Course.query.get(form.course_ids.data)
+        if not selected_course or selected_course.curator_id != current_user.id:
+            flash('Выбранный курс вам не принадлежит', 'error')
+            return render_template('curator/create_student.html', form=form)
+        
+        try:
+            new_student = User(
+                username=form.username.data,
+                role='student'
+            )
+            new_student.set_password(form.password.data)
+            
+            db.session.add(new_student)
+            db.session.flush()
+            
+            user_course = UserCourse(
+                user_id=new_student.id,
+                course_id=form.course_ids.data,
+                granted_by=current_user.id
+            )
+            db.session.add(user_course)
+            db.session.commit()
+            
+            # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+            log_curator_action(
+                'create_student',
+                f'Создан студент {new_student.username} и привязан к курсу "{selected_course.title}"',
+                target_type='user',
+                target_id=new_student.id,
+                additional_data={
+                    'course_id': selected_course.id,
+                    'course_title': selected_course.title
+                }
+            )
+            
+            flash(f'Студент {new_student.username} успешно создан и привязан к курсу "{selected_course.title}"', 'success')
+            return redirect(url_for('curator.view_students'))
+            
+        except Exception as e:
+            db.session.rollback()
+            # ✅ ЛОГИРОВАНИЕ ОШИБКИ
+            log_curator_action(
+                'create_student_error',
+                f'Ошибка при создании студента: {str(e)}',
+                additional_data={'error': str(e), 'username': form.username.data}
+            )
+            flash(f'Ошибка при создании студента: {str(e)}', 'error')
+    
+    return render_template('curator/create_student.html', form=form)
+
+
+
+
+
+
+@curator_bp.route('/students/<int:student_id>/assign-course', methods=['POST'])
+@login_required
+@curator_required
+def assign_course_to_student(student_id):
+    student = User.query.get_or_404(student_id)
+    course_id = request.form.get('course_id')
+    
+    if not course_id:
+        flash('Выберите курс', 'error')
+        return redirect(url_for('curator.view_students'))
+    
+    course = Course.query.get_or_404(course_id)
+    
+    # Проверяем, что курс принадлежит куратору
+    if course.curator_id != current_user.id:
+        flash('Вы не можете назначать студентов на чужие курсы', 'error')
+        return redirect(url_for('curator.view_students'))
+    
+    # Проверяем, что студент еще не записан на этот курс
+    existing = UserCourse.query.filter_by(user_id=student_id, course_id=course_id).first()
+    if existing:
+        flash(f'Студент {student.username} уже записан на курс "{course.title}"', 'warning')
+        return redirect(url_for('curator.view_students'))
+    
+    # Добавляем привязку
+    user_course = UserCourse(
+        user_id=student_id,
+        course_id=course_id,
+        granted_by=current_user.id
+    )
+    db.session.add(user_course)
+    db.session.commit()
+    
+    flash(f'Студент {student.username} добавлен на курс "{course.title}"', 'success')
+    return redirect(url_for('curator.view_students'))

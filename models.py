@@ -352,18 +352,50 @@ class LabConfiguration(db.Model):
 
 
 
-
-
-
-
-
-
-
-
+class UserActionLog(db.Model):
+    __tablename__ = 'user_action_logs'
     
-
-
-
-
-
-
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    action_type = db.Column(db.String(50), nullable=False, index=True)
+    action_description = db.Column(db.Text, nullable=False)
+    target_type = db.Column(db.String(50), nullable=True, index=True)
+    target_id = db.Column(db.Integer, nullable=True)
+    # Удаляем ip_address поле полностью
+    user_agent = db.Column(db.Text, nullable=True)
+    additional_data = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    user = db.relationship('User', backref='action_logs')
+    
+    def __repr__(self):
+        return f'<ActionLog {self.action_type} by {self.user.username if self.user else "Anonymous"}>'
+    
+    @property
+    def user_display(self):
+        return self.user.username if self.user else 'Аноним'
+    
+    @property
+    def formatted_time(self):
+        return self.created_at.strftime('%d.%m.%Y %H:%M:%S')
+    
+    @classmethod
+    def log_action(cls, action_type, description, user=None, target_type=None, target_id=None, 
+                   ip_address=None, user_agent=None, additional_data=None):
+        # Игнорируем ip_address параметр
+        log = cls(
+            user_id=user.id if user else None,
+            action_type=action_type,
+            action_description=description,
+            target_type=target_type,
+            target_id=target_id,
+            # ip_address=ip_address, # УДАЛЕНО
+            user_agent=user_agent,
+            additional_data=additional_data
+        )
+        db.session.add(log)
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Ошибка записи лога: {e}")

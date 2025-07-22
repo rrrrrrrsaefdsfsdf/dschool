@@ -3,7 +3,6 @@
 {% block content %}
 <div class="container mt-4">
     <h2><i class="fas fa-users-cog"></i> Управление доступами к курсам</h2>
-
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -14,7 +13,7 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-
+    
     <!-- Форма предоставления доступа -->
     <div class="card mb-4">
         <div class="card-header bg-success text-white">
@@ -26,9 +25,11 @@
                 <div class="row">
                     <div class="col-md-4">
                         <select name="user_id" class="form-select" required>
-                            <option value="">Выберите пользователя</option>
+                            <option value="">Выберите студента</option>
                             {% for user in users %}
-                                <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
+                                {% if user.role == 'student' and not user.is_admin %}
+                                    <option value="{{ user.id }}">{{ user.username }}</option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </div>
@@ -49,66 +50,74 @@
             </form>
         </div>
     </div>
-
-    <!-- Таблица текущих доступов -->
+    
+    <!-- Таблица текущих доступов студентов -->
     <div class="table-responsive">
         <table class="table table-hover">
             <thead class="table-dark">
                 <tr>
-                    <th>Пользователь</th>
-                    <th>Роль</th>
+                    <th>Студент</th>
                     <th>Доступные курсы</th>
                     <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
                 {% for user in users %}
-                <tr>
-                    <td><strong>{{ user.username }}</strong></td>
-                    <td>
-                        {% if user.is_admin %}
-                            <span class="badge bg-success">Админ</span>
-                        {% elif user.role == 'curator' %}
-                            <span class="badge bg-warning">Куратор</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Студент</span>
-                        {% endif %}
-                    </td>
-                    <td>
-    {% set user_courses = user.user_courses %}
-    {% if user_courses %}
-        {% for uc in user_courses %}
-            <span class="badge bg-info me-1">{{ uc.course.title }}</span>
-        {% endfor %}
-    {% else %}
-        <span class="text-muted">Нет доступов</span>
-    {% endif %}
-</td>
-<td>
-    {% if user.user_courses %}
-        <div class="btn-group btn-group-sm">
-            {% for uc in user.user_courses %}
-            <form method="POST" action="{{ url_for('admin.revoke_user_course_access') }}" 
-                  style="display:inline-block;" 
-                  onsubmit="return confirm('Отозвать доступ к курсу {{ uc.course.title }}?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <input type="hidden" name="course_id" value="{{ uc.course.id }}">
-                <button type="submit" class="btn btn-outline-danger btn-sm" 
-                        title="Отозвать доступ к {{ uc.course.title }}">
-                    <i class="fas fa-minus"></i> {{ uc.course.title }}
-                </button>
-            </form>
-            {% endfor %}
-        </div>
-    {% endif %}
-</td>
-                </tr>
+                    {% if user.role == 'student' and not user.is_admin %}
+                    <tr>
+                        <td>
+                            <strong>{{ user.username }}</strong>
+                            <span class="badge bg-secondary ms-2">Студент</span>
+                        </td>
+                        <td>
+                            {% set user_courses = user.user_courses %}
+                            {% if user_courses %}
+                                {% for uc in user_courses %}
+                                    <span class="badge bg-info me-1 mb-1">{{ uc.course.title }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">Нет доступов к курсам</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.user_courses %}
+                                <div class="btn-group btn-group-sm">
+                                    {% for uc in user.user_courses %}
+                                    <form method="POST" action="{{ url_for('admin.revoke_user_course_access') }}" 
+                                          style="display:inline-block;" 
+                                          onsubmit="return confirm('Отозвать доступ к курсу {{ uc.course.title }}?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <input type="hidden" name="course_id" value="{{ uc.course.id }}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                title="Отозвать доступ к {{ uc.course.title }}">
+                                            <i class="fas fa-minus"></i> {{ uc.course.title }}
+                                        </button>
+                                    </form>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
                 {% endfor %}
             </tbody>
         </table>
     </div>
-
+    
+    <!-- Проверка, если нет студентов -->
+    {% set students_exist = users|selectattr('role', 'equalto', 'student')|rejectattr('is_admin')|list %}
+    {% if not students_exist %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> В системе пока нет студентов.
+            <a href="{{ url_for('admin.admin_users_new') }}" class="btn btn-sm btn-primary ms-2">
+                <i class="fas fa-user-plus"></i> Создать студента
+            </a>
+        </div>
+    {% endif %}
+    
     <div class="mt-4">
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Назад в панель управления

@@ -6,6 +6,9 @@ from flask_login import login_required, current_user
 from extensions import db, csrf
 from models import Lab, LabProgress
 from utils import get_lab_db
+from logging_utils import log_user_action
+
+
 
 lab_bp = Blueprint('lab', __name__)
 
@@ -13,6 +16,31 @@ lab_bp = Blueprint('lab', __name__)
 @lab_bp.route('/vulnerable/<path:lab_path>', methods=['GET', 'POST'])
 @csrf.exempt
 def universal_lab_handler(lab_path):
+    lab = Lab.query.filter_by(endpoint=f'/vulnerable/{lab_path}').first()
+    if not lab:
+        # ✅ ЛОГИРОВАНИЕ ДОСТУПА К НЕСУЩЕСТВУЮЩЕЙ ЛАБЕ
+        if current_user.is_authenticated:
+            log_user_action(
+                'access_unknown_lab',
+                f'Попытка доступа к несуществующей лабе: {lab_path}',
+                additional_data={'requested_path': lab_path}
+            )
+        abort(404)
+
+    # ✅ ЛОГИРОВАНИЕ ДОСТУПА К ЛАБЕ
+    if current_user.is_authenticated:
+        log_user_action(
+            'access_lab',
+            f'Доступ к лабораторной работе "{lab.title}"',
+            target_type='lab',
+            target_id=lab.id,
+            additional_data={
+                'lab_path': lab_path,
+                'lab_difficulty': lab.difficulty,
+                'lab_type': lab.type,
+                'method': request.method
+            }
+        )
     lab = Lab.query.filter_by(endpoint=f'/vulnerable/{lab_path}').first()
     if not lab:
         abort(404)
@@ -168,6 +196,12 @@ def handle_blind_injection_lab(lab):
                            username=username)
 
 
+
+
+
+
+
+
 @lab_bp.route('/lab/<int:lab_id>/submit', methods=['POST'])
 @login_required
 def submit_lab_flag(lab_id):
@@ -176,25 +210,81 @@ def submit_lab_flag(lab_id):
         flag = request.form.get('flag', '').strip()
 
         if not flag:
+            # ✅ ЛОГИРОВАНИЕ ПУСТОГО ФЛАГА
+            log_user_action(
+                'submit_flag_empty',
+                f'Попытка отправки пустого флага для лабы "{lab.title}"',
+                target_type='lab',
+                target_id=lab_id
+            )
             return jsonify({'success': False, 'message': 'Флаг не может быть пустым'}), 400
 
         if flag == lab.flag:
-            # Исправлено для работы с правильной моделью
             progress = LabProgress.query.filter_by(user_id=current_user.id, lab_id=lab_id).first()
             if not progress:
                 progress = LabProgress(user_id=current_user.id, lab_id=lab_id)
 
             if progress.is_solved:
+                # ✅ ЛОГИРОВАНИЕ ПОВТОРНОЙ ОТПРАВКИ
+                log_user_action(
+                    'submit_flag_duplicate',
+                    f'Повторная отправка правильного флага для уже решенной лабы "{lab.title}"',
+                    target_type='lab',
+                    target_id=lab_id,
+                    additional_data={
+                        'lab_difficulty': lab.difficulty,
+                        'lab_type': lab.type,
+                        'course_id': lab.course_id
+                    }
+                )
                 return jsonify({'success': True, 'message': 'Лабораторная работа уже была решена ранее!'})
 
             progress.is_solved = True
             progress.solved_at = datetime.utcnow()
             db.session.add(progress)
             db.session.commit()
+            
+            # ✅ ЛОГИРОВАНИЕ УСПЕШНОГО РЕШЕНИЯ
+            log_user_action(
+                'submit_flag_success',
+                f'Успешно решена лабораторная работа "{lab.title}"',
+                target_type='lab',
+                target_id=lab_id,
+                additional_data={
+                    'lab_difficulty': lab.difficulty,
+                    'lab_type': lab.type,
+                    'course_id': lab.course_id,
+                    'course_title': lab.course.title if lab.course else None,
+                    'flag_submitted': flag
+                }
+            )
+            
             return jsonify({'success': True, 'message': 'Поздравляем! Лабораторная работа решена!'})
         else:
+            # ✅ ЛОГИРОВАНИЕ НЕПРАВИЛЬНОГО ФЛАГА
+            log_user_action(
+                'submit_flag_wrong',
+                f'Неправильный флаг для лабы "{lab.title}"',
+                target_type='lab',
+                target_id=lab_id,
+                additional_data={
+                    'submitted_flag': flag,
+                    'lab_difficulty': lab.difficulty,
+                    'lab_type': lab.type,
+                    'course_id': lab.course_id
+                }
+            )
             return jsonify({'success': False, 'message': 'Неправильный флаг. Проверьте формат и попробуйте еще раз.'})
 
     except Exception as e:
         db.session.rollback()
+        # ✅ ЛОГИРОВАНИЕ ОШИБКИ
+        lab_title = lab.title if 'lab' in locals() else 'Unknown'
+        log_user_action(
+            'submit_flag_error',
+            f'Ошибка при проверке флага для лабы "{lab_title}": {str(e)}',
+            target_type='lab',
+            target_id=lab_id,
+            additional_data={'error': str(e)}
+        )
         return jsonify({'success': False, 'message': 'Произошла ошибка при проверке флага'}), 500

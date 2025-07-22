@@ -78,3 +78,11 @@ class CuratorProfileForm(FlaskForm):
     curator_telegram = StringField('Telegram', validators=[Optional(), Length(max=100)])
     curator_email = StringField('Email', validators=[Optional(), Email(), Length(max=120)])
     submit = SubmitField('Сохранить')
+
+
+
+class CuratorCreateStudentForm(FlaskForm):
+    username = StringField('Логин студента', validators=[DataRequired(), Length(min=3, max=150)])
+    password = PasswordField('Пароль', validators=[DataRequired(), Length(min=6)])
+    course_ids = SelectField('Курс для привязки', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Создать студента')

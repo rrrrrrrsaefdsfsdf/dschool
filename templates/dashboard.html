@@ -140,8 +140,11 @@
               <a class="btn btn-dark btn-sm mb-2 w-100" href="{{ url_for('admin.admin_database') }}">
                 <i class="fas fa-database"></i> Управление БД
               </a>
-              <a class="btn btn-success btn-sm w-100" href="{{ url_for('admin.admin_users_new') }}">
+              <a class="btn btn-success btn-sm mb-2 w-100" href="{{ url_for('admin.admin_users_new') }}">
                 <i class="fas fa-user-plus"></i> Создать пользователя
+              </a>
+              <a class="btn btn-info btn-sm mb-2 w-100" href="{{ url_for('admin.view_logs') }}">
+                <i class="fas fa-chart-line"></i> Системные логи
               </a>
             </div>
           </div>
@@ -345,7 +348,7 @@
       
       <div class="alert alert-info">
         <i class="fas fa-info-circle"></i> 
-        Как куратор, вы можете управлять содержимым ваших курсов и проверять ответы студентов. 
+        Как куратор, вы можете создавать студентов, управлять содержимым курсов и проверять ответы. 
         Все изменения проходят модерацию администратором.
       </div>
       
@@ -385,30 +388,47 @@
         </div>
       </div>
       {% endif %}
-
+      
       <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="card h-100">
-            <div class="card-header bg-warning text-dark">
-              <h6><i class="fas fa-clipboard-check"></i> Проверка ответов</h6>
+            <div class="card-header bg-success text-white">
+              <h6><i class="fas fa-user-plus"></i> Студенты</h6>
             </div>
             <div class="card-body">
-              <a class="btn btn-warning btn-sm mb-2 w-100" href="{{ url_for('curator.review_answers') }}">
+              <a class="btn btn-success btn-sm mb-2 w-100" href="{{ url_for('curator.create_student') }}">
+                <i class="fas fa-user-plus"></i> Создать студента
+              </a>
+              <a class="btn btn-info btn-sm w-100" href="{{ url_for('curator.view_students') }}">
+                <i class="fas fa-users"></i> Мои студенты
+                {% if curator_stats and curator_stats.total_students > 0 %}
+                <span class="badge bg-light text-dark">{{ curator_stats.total_students }}</span>
+                {% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+              <h6><i class="fas fa-clipboard-check"></i> Проверка</h6>
+            </div>
+            <div class="card-body">
+              <a class="btn btn-warning btn-sm w-100" href="{{ url_for('curator.review_answers') }}">
                 <i class="fas fa-clipboard-check"></i> Проверить ответы
                 {% if curator_stats and curator_stats.pending_answers > 0 %}
                 <span class="badge bg-danger">{{ curator_stats.pending_answers }}</span>
                 {% endif %}
               </a>
-              <a class="btn btn-info btn-sm w-100" href="{{ url_for('curator.view_students') }}">
-                <i class="fas fa-users"></i> Мои студенты
-              </a>
             </div>
           </div>
         </div>
-        <div class="col-md-6">
+        
+        <div class="col-md-4">
           <div class="card h-100">
             <div class="card-header bg-info text-white">
-              <h6><i class="fas fa-graduation-cap"></i> Управление курсами</h6>
+              <h6><i class="fas fa-graduation-cap"></i> Курсы</h6>
             </div>
             <div class="card-body">
               {% set curator_courses = user.curated_courses %}
@@ -416,7 +436,7 @@
                 {% for course in curator_courses %}
                 <a href="{{ url_for('curator.manage_course', course_id=course.id) }}" 
                    class="btn btn-outline-info btn-sm mb-2 w-100">
-                  <i class="fas fa-book"></i> {{ course.title[:25] }}{% if course.title|length > 25 %}...{% endif %}
+                  <i class="fas fa-book"></i> {{ course.title[:20] }}{% if course.title|length > 20 %}...{% endif %}
                 </a>
                 {% endfor %}
               {% else %}
@@ -426,7 +446,7 @@
           </div>
         </div>
       </div>
-
+      
       {% set curator_courses = user.curated_courses %}
       {% if curator_courses %}
         <h5>Ваши курсы:</h5>

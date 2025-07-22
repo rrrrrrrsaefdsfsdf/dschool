@@ -4,11 +4,15 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-users"></i> Мои студенты</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Назад
-        </a>
+        <div>
+            <a href="{{ url_for('curator.create_student') }}" class="btn btn-success me-2">
+                <i class="fas fa-plus"></i> Создать студента
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад
+            </a>
+        </div>
     </div>
-
     {% if students %}
         <div class="row">
             {% for student in students %}
@@ -46,16 +50,33 @@
                             {% set solved_items = stats.solved_tasks + stats.solved_labs %}
                             {% set progress = (solved_items / total_items * 100)|round|int if total_items > 0 else 0 %}
                             <div class="progress">
-                                <div class="progress-bar bg-success" style="width: {{ progress }}%">
+                                <div class="progress-bar bg-success" data-progress="{{ progress }}">
                                     {{ progress }}%
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="text-muted small">
+                        <div class="text-muted small mb-3">
                             <i class="fas fa-calendar"></i> Зарегистрирован: {{ student.created_at.strftime('%d.%m.%Y') }}<br>
                             <i class="fas fa-clock"></i> Последний вход: {{ student.last_login.strftime('%d.%m.%Y %H:%M') }}
                         </div>
+                        
+                        {% if curator_courses|length > 1 %}
+                        {% set available_courses = curator_courses|selectattr('id', 'notin', stats.courses|map(attribute='id')|list) %}
+                        {% if available_courses %}
+                        <form method="POST" action="{{ url_for('curator.assign_course_to_student', student_id=student.id) }}" class="d-flex gap-2">
+                            <select name="course_id" class="form-select form-select-sm">
+                                <option value="">Выберите курс</option>
+                                {% for course in available_courses %}
+                                    <option value="{{ course.id }}">{{ course.title }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-plus"></i> Добавить
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -67,10 +88,29 @@
                 <i class="fas fa-user-friends fa-3x text-muted mb-3"></i>
                 <h5>У вас пока нет студентов</h5>
                 <p class="text-muted">
-                    Студенты появятся здесь после записи на ваши курсы.
+                    Создайте первого студента, нажав кнопку "Создать студента".
                 </p>
+                <a href="{{ url_for('curator.create_student') }}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Создать студента
+                </a>
             </div>
         </div>
     {% endif %}
 </div>
+
+<style>
+.progress-bar[data-progress] {
+    width: 0%;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const progressBars = document.querySelectorAll('.progress-bar[data-progress]');
+    progressBars.forEach(bar => {
+        const progress = bar.getAttribute('data-progress');
+        bar.style.width = progress + '%';
+    });
+});
+</script>
 {% endblock %}

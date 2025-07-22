@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+{% block title %}Логи системы - Администрирование{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-line"></i> Системные логи</h2>
+                <div class="btn-group">
+                    <a href="{{ url_for('admin.live_logs') }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-play-circle"></i> Живые логи
+                    </a>
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#clearLogsModal">
+                        <i class="fas fa-trash"></i> Очистить логи
+                    </button>
+                    <a href="{{ url_for('admin.view_logs') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-sync"></i> Обновить
+                    </a>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card text-white shadow" style="background: linear-gradient(45deg, #007bff, #0056b3);">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-database fa-2x"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="small">Всего записей</div>
+                                    <div class="h4 mb-0">{{ stats.total_logs }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card text-white shadow" style="background: linear-gradient(45deg, #28a745, #1e7e34);">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-calendar-day fa-2x"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="small">Записей сегодня</div>
+                                    <div class="h4 mb-0">{{ stats.today_logs }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card text-white shadow" style="background: linear-gradient(45deg, #17a2b8, #117a8b);">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-users fa-2x"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="small">Активных пользователей</div>
+                                    <div class="h4 mb-0">{{ stats.unique_users_today }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card text-white shadow" style="background: linear-gradient(45deg, #6c757d, #495057);">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="small">Последний лог</div>
+                                    <div class="small mb-0">
+                                        {% if logs.items %}
+                                            {{ logs.items[0].formatted_time }}
+                                        {% else %}
+                                            Нет данных
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-filter"></i> Фильтры поиска
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.view_logs') }}" id="filterForm">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="action_type" class="form-label small">Тип действия</label>
+                                <select name="action_type" id="action_type" class="form-select form-select-sm">
+                                    <option value="">Все типы</option>
+                                    {% for at in action_types %}
+                                    <option value="{{ at }}" {% if filters.action_type == at %}selected{% endif %}>
+                                        {{ at }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="user_id" class="form-label small">Пользователь</label>
+                                <select name="user_id" id="user_id" class="form-select form-select-sm">
+                                    <option value="">Все пользователи</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}" {% if filters.user_id == user.id|string %}selected{% endif %}>
+                                        {{ user.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="target_type" class="form-label small">Тип объекта</label>
+                                <select name="target_type" id="target_type" class="form-select form-select-sm">
+                                    <option value="">Все объекты</option>
+                                    {% for tt in target_types %}
+                                    <option value="{{ tt }}" {% if filters.target_type == tt %}selected{% endif %}>
+                                        {{ tt|title }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="date_from" class="form-label small">С даты</label>
+                                <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ filters.date_from }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="date_to" class="form-label small">До даты</label>
+                                <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ filters.date_to }}">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="btn-group w-100">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-search"></i> Найти
+                                    </button>
+                                    <a href="{{ url_for('admin.view_logs') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-eraser"></i> Сброс
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-list"></i> Записи логов
+                    </h6>
+                    <span class="badge bg-light text-dark">
+                        Страница {{ logs.page }} из {{ logs.pages }} ({{ logs.total }} записей)
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    {% if logs.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th style="width: 140px;" class="text-center">
+                                            <i class="fas fa-clock"></i> Время
+                                        </th>
+                                        <th style="width: 150px;" class="text-center">
+                                            <i class="fas fa-user"></i> Пользователь
+                                        </th>
+                                        <th style="width: 180px;" class="text-center">
+                                            <i class="fas fa-cog"></i> Действие
+                                        </th>
+                                        <th>
+                                            <i class="fas fa-comment-alt"></i> Описание
+                                        </th>
+                                        <th style="width: 120px;" class="text-center">
+                                            <i class="fas fa-cube"></i> Объект
+                                        </th>
+                                        <th style="width: 80px;" class="text-center">
+                                            <i class="fas fa-info-circle"></i> Детали
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in logs.items %}
+                                    <tr class="align-middle">
+                                        <td class="text-center">
+                                            <small class="text-muted">
+                                                {{ log.formatted_time }}
+                                            </small>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if log.user %}
+                                                {% if log.user.is_admin %}
+                                                    <span class="badge bg-danger rounded-pill">
+                                                        <i class="fas fa-crown"></i> {{ log.user_display }}
+                                                    </span>
+                                                {% elif log.user.role == 'curator' %}
+                                                    <span class="badge bg-warning text-dark rounded-pill">
+                                                        <i class="fas fa-user-tie"></i> {{ log.user_display }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary rounded-pill">
+                                                        <i class="fas fa-user"></i> {{ log.user_display }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-dark rounded-pill">
+                                                    <i class="fas fa-user-secret"></i> {{ log.user_display }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if 'login' in log.action_type and 'failed' not in log.action_type %}
+                                                <span class="badge bg-success rounded-pill">
+                                                    <i class="fas fa-sign-in-alt"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'logout' in log.action_type %}
+                                                <span class="badge bg-secondary rounded-pill">
+                                                    <i class="fas fa-sign-out-alt"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'admin' in log.action_type %}
+                                                <span class="badge bg-danger rounded-pill">
+                                                    <i class="fas fa-shield-alt"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'curator' in log.action_type %}
+                                                <span class="badge bg-warning text-dark rounded-pill">
+                                                    <i class="fas fa-chalkboard-teacher"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'failed' in log.action_type or 'error' in log.action_type or 'wrong' in log.action_type %}
+                                                <span class="badge bg-danger rounded-pill">
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'success' in log.action_type %}
+                                                <span class="badge bg-success rounded-pill">
+                                                    <i class="fas fa-check"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'visit' in log.action_type or 'access' in log.action_type %}
+                                                <span class="badge bg-info rounded-pill">
+                                                    <i class="fas fa-eye"></i> {{ log.action_type }}
+                                                </span>
+                                            {% elif 'submit' in log.action_type %}
+                                                <span class="badge bg-primary rounded-pill">
+                                                    <i class="fas fa-paper-plane"></i> {{ log.action_type }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-primary rounded-pill">
+                                                    <i class="fas fa-cog"></i> {{ log.action_type }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-dark">{{ log.action_description }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if log.target_type %}
+                                                {% if log.target_type == 'task' %}
+                                                    <span class="badge bg-info rounded-pill">
+                                                        <i class="fas fa-tasks"></i> {{ log.target_type }}:{{ log.target_id }}
+                                                    </span>
+                                                {% elif log.target_type == 'lab' %}
+                                                    <span class="badge bg-warning text-dark rounded-pill">
+                                                        <i class="fas fa-flask"></i> {{ log.target_type }}:{{ log.target_id }}
+                                                    </span>
+                                                {% elif log.target_type == 'course' %}
+                                                    <span class="badge bg-success rounded-pill">
+                                                        <i class="fas fa-graduation-cap"></i> {{ log.target_type }}:{{ log.target_id }}
+                                                    </span>
+                                                {% elif log.target_type == 'user' %}
+                                                    <span class="badge bg-secondary rounded-pill">
+                                                        <i class="fas fa-user"></i> {{ log.target_type }}:{{ log.target_id }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-light text-dark rounded-pill">
+                                                        <i class="fas fa-cube"></i> {{ log.target_type }}:{{ log.target_id }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if log.additional_data %}
+                                                <button class="btn btn-outline-info btn-sm rounded-circle details-btn" 
+                                                        data-log-index="{{ loop.index0 }}"
+                                                        data-log-id="{{ log.id }}"
+                                                        title="Показать дополнительные данные">
+                                                    <i class="fas fa-info"></i>
+                                                </button>
+                                                <script type="application/json" id="log-data-{{ loop.index0 }}">{{ log.additional_data|tojson|safe }}</script>
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info m-3">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Логи не найдены.</strong> Попробуйте изменить критерии фильтрации.
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if logs.pages > 1 %}
+                <div class="card-footer bg-light">
+                    <nav aria-label="Навигация по логам">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            {% if logs.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.view_logs', page=1, **request.args) }}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.view_logs', page=logs.prev_num, **request.args) }}">
+                                        <i class="fas fa-angle-left"></i> Назад
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in logs.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != logs.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.view_logs', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link fw-bold">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if logs.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.view_logs', page=logs.next_num, **request.args) }}">
+                                        Вперед <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.view_logs', page=logs.pages, **request.args) }}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="clearLogsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Очистить логи
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.clear_logs') }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-warning"></i>
+                        <strong>Внимание!</strong> Это действие нельзя отменить. Удаленные логи будут потеряны навсегда.
+                    </div>
+                    <div class="mb-3">
+                        <label for="days" class="form-label">Удалить логи старше (дней):</label>
+                        <input type="number" class="form-control" id="days" name="days" min="1" max="365" value="30" required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i>
+                            Будут удалены все логи старше указанного количества дней
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Отмена
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-trash"></i> Очистить логи
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i> Дополнительные данные
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light">
+                    <i class="fas fa-code"></i>
+                    <strong>JSON данные записи лога:</strong>
+                </div>
+                <pre id="detailsContent" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Закрыть
+                </button>
+                <button type="button" class="btn btn-primary" onclick="copyToClipboard()">
+                    <i class="fas fa-copy"></i> Копировать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function copyToClipboard() {
+    const content = document.getElementById('detailsContent').textContent;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(content).then(function() {
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-success');
+            setTimeout(function() {
+                btn.innerHTML = originalText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+            }, 2000);
+        }).catch(function() {
+            alert('Ошибка копирования в буфер обмена');
+        });
+    } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = content;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-success');
+            setTimeout(function() {
+                btn.innerHTML = originalText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+            }, 2000);
+        } catch(err) {
+            alert('Ошибка копирования в буфер обмена');
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('filterForm');
+    if (form) {
+        const selects = form.querySelectorAll('select, input[type="date"]');
+        
+        selects.forEach(function(select) {
+            select.addEventListener('change', function() {
+                if (this.value) {
+                    this.classList.add('border-primary');
+                } else {
+                    this.classList.remove('border-primary');
+                }
+            });
+            
+            if (select.value) {
+                select.classList.add('border-primary');
+            }
+        });
+    }
+
+    document.querySelectorAll('.details-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            try {
+                const logIndex = this.getAttribute('data-log-index');
+                const logId = this.getAttribute('data-log-id');
+                
+                const dataScript = document.getElementById('log-data-' + logIndex);
+                if (!dataScript) {
+                    document.getElementById('detailsContent').textContent = 'Дополнительные данные отсутствуют';
+                } else {
+                    const jsonData = dataScript.textContent;
+                    if (!jsonData || jsonData.trim() === '' || jsonData === 'null' || jsonData === '{}') {
+                        document.getElementById('detailsContent').textContent = 'Дополнительные данные отсутствуют';
+                    } else {
+                        try {
+                            const data = JSON.parse(jsonData);
+                            const formatted = JSON.stringify(data, null, 2);
+                            document.getElementById('detailsContent').textContent = formatted;
+                        } catch (parseError) {
+                            document.getElementById('detailsContent').textContent = 'Ошибка парсинга JSON:\n' + parseError.message + '\n\nИсходные данные:\n' + jsonData;
+                        }
+                    }
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                modal.show();
+            } catch (error) {
+                console.error('Ошибка обработки данных:', error);
+                document.getElementById('detailsContent').textContent = 'Ошибка обработки данных: ' + error.message;
+                
+                const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                modal.show();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

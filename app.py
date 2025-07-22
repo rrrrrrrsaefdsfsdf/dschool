@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 from flask_wtf.csrf import CSRFError
 from config import DevelopmentConfig, ProductionConfig
 from extensions import login_manager, csrf, migrate, assets
+from logging_utils import log_user_action
 from models import Course, CourseModeration, UserCourse, db, Task, Lab, CuratorContact, UserTaskAnswer, UserLabProgress, LabProgress, UserTaskProgress
 from curator_routes import curator_bp
 
@@ -153,6 +154,17 @@ def create_app():
     @app.route('/')
     @login_required
     def index():
+        # ✅ ДОБАВЬ ЛОГИРОВАНИЕ ПОСЕЩЕНИЯ ГЛАВНОЙ СТРАНИЦЫ
+        task_type = request.args.get('type', 'Практика')
+        
+        log_user_action(
+            'visit_main_page',
+            f'Посещение главной страницы с типом задач: {task_type}',
+            additional_data={
+                'task_type': task_type,
+                'user_role': current_user.role
+            }
+        )
         from models import Task
         task_type = request.args.get('type', 'Практика')
         solved_task_ids = [p.task_id for p in current_user.tasks_progress.filter_by(is_approved=True).all()]
@@ -199,6 +211,15 @@ def create_app():
     @app.route('/dashboard')
     @login_required
     def dashboard():
+        # ✅ ДОБАВЬ ЛОГИРОВАНИЕ ПОСЕЩЕНИЯ ДАШБОРДА
+        log_user_action(
+            'visit_dashboard',
+            f'Посещение дашборда пользователем {current_user.username}',
+            additional_data={
+                'user_role': current_user.role,
+                'is_admin': current_user.is_admin
+            }
+        )
         if current_user.is_admin:
             curator_contacts = CuratorContact.query.all()
             stats = get_admin_stats()
@@ -334,6 +355,13 @@ def create_app():
     @app.route('/contacts')
     @login_required
     def contacts():
+        # ✅ ДОБАВЬ ЛОГИРОВАНИЕ ПОСЕЩЕНИЯ КОНТАКТОВ
+        log_user_action(
+            'visit_contacts',
+            'Просмотр страницы контактов',
+            additional_data={'user_role': current_user.role}
+        )
+        
         # Общий контакт техподдержки
         tech_support = {
             'name': 'Техническая поддержка',
@@ -408,6 +436,20 @@ def create_app():
                     app.logger.error(f'HTML минификация ошибка: {e}')
             return response
             
+
+
+    @app.template_global()
+    def datetime():
+        import datetime as dt
+        return dt.datetime
+
+    @app.template_filter('today')
+    def today_filter(s):
+        from datetime import datetime
+        return datetime.utcnow().strftime('%Y-%m-%d')
+
+
+
     return app
 
 

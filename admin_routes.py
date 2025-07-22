@@ -1,11 +1,16 @@
 import os
-from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
+from datetime import datetime, timedelta
+from flask import Blueprint, jsonify, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
 from extensions import db, csrf
 from forms import TaskForm, LabForm, RegistrationForm, CourseForm, UserCourseForm, CourseTaskForm, CourseLabForm
 from models import User, Task, Lab, UserTaskProgress, LabProgress, CuratorContact, Course, UserCourse, CourseModeration
 from utils import admin_required, get_lab_db
+from logging_utils import log_admin_action, log_user_action
+
+
+
+
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -15,6 +20,11 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 def admin_courses():
     courses = Course.query.all()
     return render_template('admin_courses.html', courses=courses)
+
+
+
+
+
 
 @admin_bp.route('/courses/new', methods=['GET', 'POST'])
 @login_required
@@ -35,16 +45,32 @@ def admin_courses_new():
         )
         db.session.add(course)
         db.session.commit()
+        
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+        log_admin_action(
+            'create_course',
+            f'Создан курс "{course.title}"',
+            target_type='course',
+            target_id=course.id,
+            additional_data={
+                'curator_id': curator_id,
+                'is_active': course.is_active,
+                'description_length': len(course.description or '')
+            }
+        )
+        
         flash(f'Курс "{course.title}" создан успешно!', 'success')
         return redirect(url_for('admin.admin_courses'))
     
     return render_template('admin_course_form.html', form=form, title='Создать новый курс')
 
+# В функцию admin_courses_edit добавь после db.session.commit():
 @admin_bp.route('/courses/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def admin_courses_edit(id):
     course = Course.query.get_or_404(id)
+    old_title = course.title
     form = CourseForm(obj=course)
     
     curators = User.query.filter_by(role='curator').all()
@@ -57,17 +83,36 @@ def admin_courses_edit(id):
         course.is_active = form.is_active.data
         course.updated_at = datetime.utcnow()
         db.session.commit()
+        
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+        log_admin_action(
+            'edit_course',
+            f'Изменен курс "{course.title}"',
+            target_type='course',
+            target_id=course.id,
+            additional_data={
+                'old_title': old_title,
+                'new_title': course.title,
+                'curator_id': course.curator_id,
+                'is_active': course.is_active
+            }
+        )
+        
         flash(f'Курс "{course.title}" обновлен!', 'success')
         return redirect(url_for('admin.admin_courses'))
     
     return render_template('admin_course_form.html', form=form, course=course, title='Редактировать курс')
 
+# В функцию admin_courses_delete добавь после db.session.commit():
 @admin_bp.route('/courses/<int:id>/delete', methods=['POST'])
 @login_required
 @admin_required
 def admin_courses_delete(id):
     course = Course.query.get_or_404(id)
     course_title = course.title
+    course_students = UserCourse.query.filter_by(course_id=id).count()
+    course_tasks = Task.query.filter_by(course_id=id).count()
+    course_labs = Lab.query.filter_by(course_id=id).count()
     
     try:
         UserCourse.query.filter_by(course_id=id).delete()
@@ -77,12 +122,40 @@ def admin_courses_delete(id):
         db.session.delete(course)
         db.session.commit()
         
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+        log_admin_action(
+            'delete_course',
+            f'Удален курс "{course_title}"',
+            target_type='course',
+            target_id=id,
+            additional_data={
+                'students_count': course_students,
+                'tasks_count': course_tasks,
+                'labs_count': course_labs
+            }
+        )
+        
         flash(f'Курс "{course_title}" удален успешно!', 'success')
     except Exception as e:
         db.session.rollback()
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ ОШИБКИ
+        log_admin_action(
+            'delete_course_failed',
+            f'Ошибка при удалении курса "{course_title}": {str(e)}',
+            target_type='course',
+            target_id=id
+        )
         flash(f'Ошибка при удалении курса: {str(e)}', 'error')
     
     return redirect(url_for('admin.admin_courses'))
+
+
+
+
+
+
+
+
 
 @admin_bp.route('/user-courses')
 @login_required
@@ -399,6 +472,14 @@ def admin_answers():
     answers = query.all()
     return render_template('admin_answers.html', answers=answers, selected_type=selected_type)
 
+
+
+
+
+
+
+
+# Добавь логирование в функции проверки ответов:
 @admin_bp.route('/answers/<int:id>/approve', methods=['POST'])
 @login_required
 @admin_required
@@ -408,6 +489,20 @@ def approve_answer(id):
     answer.is_approved = True
     answer.checked_at = datetime.utcnow()
     db.session.commit()
+    
+    # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+    log_admin_action(
+        'approve_answer',
+        f'Одобрен ответ пользователя {answer.user.username} по задаче "{answer.task.title}"',
+        target_type='task',
+        target_id=answer.task_id,
+        additional_data={
+            'student_id': answer.user_id,
+            'student_username': answer.user.username,
+            'answer_text': answer.user_answer[:100] if answer.user_answer else None  # Первые 100 символов
+        }
+    )
+    
     flash(f"Ответ пользователя {answer.user.username} по задаче '{answer.task.title}' подтверждён.", "success")
     return redirect(url_for('admin.admin_answers'))
 
@@ -420,8 +515,34 @@ def reject_answer(id):
     answer.is_approved = False
     answer.checked_at = datetime.utcnow()
     db.session.commit()
+    
+    # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+    log_admin_action(
+        'reject_answer',
+        f'Отклонен ответ пользователя {answer.user.username} по задаче "{answer.task.title}"',
+        target_type='task',
+        target_id=answer.task_id,
+        additional_data={
+            'student_id': answer.user_id,
+            'student_username': answer.user.username,
+            'answer_text': answer.user_answer[:100] if answer.user_answer else None
+        }
+    )
+    
     flash(f"Ответ пользователя {answer.user.username} по задаче '{answer.task.title}' отклонён.", "warning")
     return redirect(url_for('admin.admin_answers'))
+
+
+
+
+
+
+
+
+
+
+
+
 
 @admin_bp.route('/users', methods=['POST'])
 @login_required
@@ -435,47 +556,106 @@ def manage_users():
             if user.id == current_user.id:
                 flash('Вы не можете удалить самого себя', 'danger')
             else:
+                username = user.username
+                user_role = user.role
+                
                 UserTaskProgress.query.filter_by(user_id=user.id).delete()
                 LabProgress.query.filter_by(user_id=user.id).delete()
                 UserCourse.query.filter_by(user_id=user.id).delete()
                 db.session.delete(user)
                 db.session.commit()
-                flash(f'Пользователь {user.username} удалён', 'success')
+                
+                # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+                log_admin_action(
+                    'delete_user',
+                    f'Удален пользователь {username}',
+                    target_type='user',
+                    target_id=user_id,
+                    additional_data={'deleted_user_role': user_role}
+                )
+                
+                flash(f'Пользователь {username} удалён', 'success')
+                
         elif action == 'toggle_admin':
             user = User.query.get_or_404(user_id)
+            old_status = user.is_admin
             user.is_admin = not user.is_admin
             if user.is_admin:
                 user.role = 'admin'
             else:
                 user.role = 'student'
             db.session.commit()
-            flash(f'Пользователь {user.username} {"назначен админом" if user.is_admin else "снят с должности админа"}',
-                  'success')
+            
+            # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+            log_admin_action(
+                'toggle_admin',
+                f'Изменены права админа для {user.username}: {old_status} → {user.is_admin}',
+                target_type='user',
+                target_id=user_id,
+                additional_data={
+                    'old_admin_status': old_status,
+                    'new_admin_status': user.is_admin,
+                    'new_role': user.role
+                }
+            )
+            
+            flash(f'Пользователь {user.username} {"назначен админом" if user.is_admin else "снят с должности админа"}', 'success')
+            
         elif action == 'make_curator':
             user = User.query.get_or_404(user_id)
+            old_role = user.role
             user.role = 'curator'
             user.is_admin = False
             db.session.commit()
+            
+            # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+            log_admin_action(
+                'make_curator',
+                f'Назначен куратором: {user.username}',
+                target_type='user',
+                target_id=user_id,
+                additional_data={'old_role': old_role, 'new_role': 'curator'}
+            )
+            
             flash(f'Пользователь {user.username} назначен куратором', 'success')
+            
         elif action == 'make_student':
             user = User.query.get_or_404(user_id)
+            old_role = user.role
             user.role = 'student'
             user.is_admin = False
             db.session.commit()
+            
+            # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+            log_admin_action(
+                'make_student',
+                f'Назначен студентом: {user.username}',
+                target_type='user',
+                target_id=user_id,
+                additional_data={'old_role': old_role, 'new_role': 'student'}
+            )
+            
             flash(f'Пользователь {user.username} назначен студентом', 'success')
+            
     except Exception as e:
         db.session.rollback()
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ ОШИБКИ
+        log_admin_action(
+            'manage_users_error',
+            f'Ошибка при управлении пользователем: {str(e)}',
+            additional_data={'action': action, 'user_id': user_id, 'error': str(e)}
+        )
         flash(f'Произошла ошибка: {e}', 'danger')
+    
     return redirect(url_for('dashboard'))
 
-
+# В функцию admin_users_new добавь после db.session.commit():
 @admin_bp.route('/users/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def admin_users_new():
     form = RegistrationForm()
     courses = Course.query.filter_by(is_active=True).all()
-    # Используем строковые значения
     form.course_ids.choices = [('', 'Без курса (можно назначить позже)')] + [(str(c.id), c.title) for c in courses]
     
     if form.validate_on_submit():
@@ -498,7 +678,7 @@ def admin_users_new():
         db.session.add(new_user)
         db.session.flush()
         
-        # Привязка к курсу только если выбран конкретный курс
+        course_id = None
         if form.course_ids.data and form.course_ids.data != '' and form.course_ids.data.isdigit():
             course_id = int(form.course_ids.data)
             user_course = UserCourse(
@@ -510,14 +690,28 @@ def admin_users_new():
         
         db.session.commit()
         
+        # ✅ ДОБАВЬ ЭТО ЛОГИРОВАНИЕ
+        log_admin_action(
+            'create_user',
+            f'Создан пользователь {new_user.username} с ролью {new_user.role}',
+            target_type='user',
+            target_id=new_user.id,
+            additional_data={
+                'created_role': new_user.role,
+                'is_admin': new_user.is_admin,
+                'assigned_course_id': course_id,
+                'has_curator_contacts': bool(new_user.curator_name or new_user.curator_telegram or new_user.curator_email)
+            }
+        )
+        
         role_text = {
             'student': 'студент',
             'curator': 'куратор',
             'admin': 'администратор'
         }.get(form.role.data, 'пользователь')
         
-        if form.course_ids.data and form.course_ids.data != '' and form.course_ids.data.isdigit():
-            course = Course.query.get(int(form.course_ids.data))
+        if course_id:
+            course = Course.query.get(course_id)
             flash(f'{role_text.capitalize()} {new_user.username} создан и привязан к курсу "{course.title}"', "success")
         else:
             flash(f'{role_text.capitalize()} {new_user.username} создан без привязки к курсу', "success")
@@ -525,6 +719,19 @@ def admin_users_new():
         return redirect(url_for('dashboard'))
     
     return render_template('admin_user_form.html', form=form)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1067,3 +1274,169 @@ def backup_database():
 
 
 
+from logging_utils import log_admin_action
+from models import UserActionLog
+from sqlalchemy import desc
+
+
+
+# Добавь эти роуты в admin_routes.py
+from models import UserActionLog
+from sqlalchemy import desc
+
+@admin_bp.route('/logs')
+@login_required
+@admin_required
+def view_logs():
+    # ✅ ЛОГИРУЕМ ПРОСМОТР ЛОГОВ АДМИНОМ
+    log_admin_action('view_logs', 'Просмотр системных логов')
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    action_type = request.args.get('action_type', '')
+    user_id = request.args.get('user_id', '')
+    target_type = request.args.get('target_type', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    query = UserActionLog.query
+    
+    if action_type:
+        query = query.filter(UserActionLog.action_type.like(f'%{action_type}%'))
+    
+    if user_id:
+        query = query.filter(UserActionLog.user_id == user_id)
+    
+    if target_type:
+        query = query.filter(UserActionLog.target_type == target_type)
+    
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(UserActionLog.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            query = query.filter(UserActionLog.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    query = query.order_by(desc(UserActionLog.created_at))
+    
+    logs = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    users = User.query.all()
+    action_types = db.session.query(UserActionLog.action_type.distinct()).all()
+    action_types = [at[0] for at in action_types]
+    target_types = db.session.query(UserActionLog.target_type.distinct()).filter(
+        UserActionLog.target_type.isnot(None)
+    ).all()
+    target_types = [tt[0] for tt in target_types]
+    
+    stats = {
+        'total_logs': UserActionLog.query.count(),
+        'today_logs': UserActionLog.query.filter(
+            UserActionLog.created_at >= datetime.utcnow().date()
+        ).count(),
+        'unique_users_today': db.session.query(UserActionLog.user_id.distinct()).filter(
+            UserActionLog.created_at >= datetime.utcnow().date(),
+            UserActionLog.user_id.isnot(None)
+        ).count()
+    }
+    
+    return render_template('admin_logs.html',
+                         logs=logs,
+                         users=users,
+                         action_types=action_types,
+                         target_types=target_types,
+                         stats=stats,
+                         filters={
+                             'action_type': action_type,
+                             'user_id': user_id,
+                             'target_type': target_type,
+                             'date_from': date_from,
+                             'date_to': date_to
+                         })
+
+@admin_bp.route('/logs/live')
+@login_required
+@admin_required
+def live_logs():
+    # ✅ ЛОГИРУЕМ ПРОСМОТР ЖИВЫХ ЛОГОВ
+    log_admin_action('view_live_logs', 'Открыт режим просмотра живых логов')
+    return render_template('admin_live_logs.html')
+
+
+
+@admin_bp.route('/api/logs/recent')
+@login_required
+@admin_required
+def api_recent_logs():
+    """API для получения последних логов БЕЗ IP"""
+    limit = request.args.get('limit', 20, type=int)
+    since_id = request.args.get('since_id', 0, type=int)
+    
+    query = UserActionLog.query
+    if since_id > 0:
+        query = query.filter(UserActionLog.id > since_id)
+    
+    logs = query.order_by(desc(UserActionLog.created_at)).limit(limit).all()
+    
+    return jsonify({
+        'logs': [{
+            'id': log.id,
+            'user': log.user_display,
+            'action_type': log.action_type,
+            'description': log.action_description,
+            'target_type': log.target_type,
+            'target_id': log.target_id,
+            # 'ip_address': log.ip_address,  # УДАЛЕНО
+            'time': log.formatted_time,
+            'additional_data': log.additional_data
+        } for log in logs]
+    })
+
+
+
+
+
+
+
+@admin_bp.route('/logs/clear', methods=['POST'])
+@login_required
+@admin_required
+def clear_logs():
+    days = request.form.get('days', type=int)
+    
+    if days:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        deleted_count = UserActionLog.query.filter(
+            UserActionLog.created_at < cutoff_date
+        ).count()
+        
+        UserActionLog.query.filter(
+            UserActionLog.created_at < cutoff_date
+        ).delete()
+        
+        db.session.commit()
+        
+        # ✅ ЛОГИРУЕМ ОЧИСТКУ ЛОГОВ
+        log_admin_action(
+            'clear_logs',
+            f'Очищены логи старше {days} дней. Удалено записей: {deleted_count}',
+            additional_data={'days': days, 'deleted_count': deleted_count}
+        )
+        
+        flash(f'Удалено {deleted_count} записей логов старше {days} дней', 'success')
+    else:
+        flash('Укажите количество дней', 'error')
+    
+    return redirect(url_for('admin.view_logs'))

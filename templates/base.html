@@ -64,6 +64,13 @@
                         <i class="fas fa-flask"></i> Лабораторные работы
                     </a>
                     <hr class="dropdown-divider">
+                    <a href="{{ url_for('admin.view_logs') }}">
+                        <i class="fas fa-chart-line"></i> Системные логи
+                    </a>
+                    <a href="{{ url_for('admin.live_logs') }}">
+                        <i class="fas fa-broadcast-tower"></i> Живые логи
+                    </a>
+                    <hr class="dropdown-divider">
                     <a href="{{ url_for('admin.admin_database') }}">
                         <i class="fas fa-database"></i> База данных
                     </a>
@@ -94,6 +101,25 @@
                         <i class="fas fa-address-book"></i> Новый контакт куратора
                     </a>
                     <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Мониторинг</h6>
+                    <a href="{{ url_for('admin.view_logs') }}">
+                        <i class="fas fa-search"></i> Найти логи
+                    </a>
+                    <a href="{{ url_for('admin.live_logs') }}" target="_blank">
+                        <i class="fas fa-eye"></i> Смотреть в реальном времени
+                    </a>
+                    <a href="{{ url_for('admin.admin_answers') }}">
+                        <i class="fas fa-clipboard-check"></i> Проверить ответы
+                    </a>
+                    <a href="{{ url_for('admin.admin_moderation') }}">
+                        <i class="fas fa-gavel"></i> Модерация курсов
+                    </a>
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Управление пользователями</h6>
+                    <a href="{{ url_for('admin.admin_user_courses') }}">
+                        <i class="fas fa-link"></i> Привязка к курсам
+                    </a>
+                    <hr class="dropdown-divider">
                     <h6 class="dropdown-header">Инициализация</h6>
                     <a href="{{ url_for('admin.init_labs_data') }}">
                         <i class="fas fa-magic"></i> Создать тестовые лабы
@@ -104,6 +130,56 @@
                     <a href="{{ url_for('admin.init_vulnerable_db') }}">
                         <i class="fas fa-database"></i> Инициализировать уязвимую БД
                     </a>
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Обслуживание</h6>
+                    <a href="{{ url_for('admin.admin_database') }}">
+                        <i class="fas fa-wrench"></i> Управление БД
+                    </a>
+                    <a href="{{ url_for('admin.clear_logs') }}" onclick="return confirm('Вы уверены?')">
+                        <i class="fas fa-trash"></i> Очистить логи
+                    </a>
+                </div>
+            </div>
+            <div class="nav-dropdown">
+                <a href="#" class="nav-dropdown-toggle">
+                    <i class="fas fa-chart-bar"></i> Мониторинг <i class="fas fa-chevron-down"></i>
+                </a>
+                <div class="nav-dropdown-menu">
+                    <h6 class="dropdown-header">Логи и активность</h6>
+                    <a href="{{ url_for('admin.view_logs') }}">
+                        <i class="fas fa-list"></i> Все логи
+                    </a>
+                    <a href="{{ url_for('admin.view_logs') }}?action_type=login">
+                        <i class="fas fa-sign-in-alt"></i> Входы в систему
+                    </a>
+                    <a href="{{ url_for('admin.view_logs') }}?action_type=admin">
+                        <i class="fas fa-shield-alt"></i> Действия админов
+                    </a>
+                    <a href="{{ url_for('admin.view_logs') }}?action_type=submit">
+                        <i class="fas fa-paper-plane"></i> Отправки заданий
+                    </a>
+                    <a href="{{ url_for('admin.view_logs') }}?action_type=failed">
+                        <i class="fas fa-exclamation-triangle"></i> Ошибки и сбои
+                    </a>
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Живой мониторинг</h6>
+                    <a href="{{ url_for('admin.live_logs') }}" target="_blank">
+                        <i class="fas fa-broadcast-tower"></i> Поток логов
+                    </a>
+                    <a href="{{ url_for('admin.admin_answers') }}">
+                        <i class="fas fa-bell"></i> Непроверенные ответы
+                    </a>
+                    <a href="{{ url_for('admin.admin_moderation') }}">
+                        <i class="fas fa-clock"></i> Ожидает модерации
+                    </a>
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Статистика сегодня</h6>
+                    <a href="{{ url_for('admin.view_logs') }}?date_from={% raw %}{{ datetime.utcnow().strftime('%Y-%m-%d') }}{% endraw %}">
+                        <i class="fas fa-calendar-day"></i> Логи за сегодня
+                    </a>
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-users"></i> Активные пользователи
+                    </a>
                 </div>
             </div>
         {% elif current_user.role == 'curator' %}
@@ -112,11 +188,29 @@
                     <i class="fas fa-users-cog"></i> Кураторство <i class="fas fa-chevron-down"></i>
                 </a>
                 <div class="nav-dropdown-menu">
+                    <h6 class="dropdown-header">Основные действия</h6>
                     <a href="{{ url_for('curator.review_answers') }}">
                         <i class="fas fa-clipboard-check"></i> Проверка ответов
                     </a>
                     <a href="{{ url_for('curator.view_students') }}">
                         <i class="fas fa-user-graduate"></i> Мои студенты
+                    </a>
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Управление курсами</h6>
+                    {% for course in current_user.curated_courses %}
+                    <a href="{{ url_for('curator.manage_course', course_id=course.id) }}">
+                        <i class="fas fa-book"></i> {{ course.title }}
+                    </a>
+                    {% endfor %}
+                    {% if not current_user.curated_courses %}
+                    <span class="dropdown-item-text text-muted">
+                        <i class="fas fa-info-circle"></i> Нет курсов
+                    </span>
+                    {% endif %}
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header">Быстрые действия</h6>
+                    <a href="{{ url_for('curator.create_student') }}">
+                        <i class="fas fa-user-plus"></i> Создать студента
                     </a>
                     <a href="{{ url_for('curator.edit_profile') }}">
                         <i class="fas fa-user-edit"></i> Мой профиль
@@ -298,14 +392,15 @@ main {
     position: absolute;
     top: 100%;
     right: 0;
-    min-width: 250px;
+    min-width: 280px;
+    max-width: 320px;
     background-color: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     overflow: hidden;
-    max-height: 400px;
+    max-height: 500px;
     overflow-y: auto;
 }
 .nav-dropdown:hover .nav-dropdown-menu {
@@ -341,6 +436,11 @@ main {
     background-color: #f8f9fa;
     border-bottom: none;
 }
+.nav-dropdown-menu .dropdown-item-text {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+}
 .nav-dropdown-menu a[href*="admin"] {
     border-left: 3px solid #007bff;
 }
@@ -352,6 +452,9 @@ main {
 }
 .nav-dropdown-menu a[href*="init"] {
     border-left: 3px solid #ffc107;
+}
+.nav-dropdown-menu a[href*="logs"] {
+    border-left: 3px solid #dc3545;
 }
 .logout-link {
     color: #dc3545 !important;
@@ -381,7 +484,7 @@ main {
         position: absolute;
         top: 100%;
         right: 0;
-        width: 280px;
+        width: 300px;
         background-color: #333;
         flex-direction: column;
         align-items: stretch;
@@ -420,6 +523,8 @@ main {
         border-radius: 4px;
         right: auto;
         max-height: 300px;
+        min-width: auto;
+        max-width: none;
     }
     .nav-dropdown:hover .nav-dropdown-menu {
         display: none;
@@ -456,7 +561,7 @@ main {
     .nav-links {
         padding: 0.8rem;
         max-height: 60vh;
-        width: 260px;
+        width: 280px;
     }
     .nav-links a {
         padding: 10px 12px;

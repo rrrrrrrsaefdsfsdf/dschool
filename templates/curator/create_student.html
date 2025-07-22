@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Создать студента{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-user-plus"></i> Создать нового студента</h2>
+        <a href="{{ url_for('curator.view_students') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к студентам
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Форма создания студента</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label") }}
+                            {{ form.username(class="form-control") }}
+                            {% if form.username.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.username.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Логин должен быть уникальным и содержать не менее 3 символов
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label") }}
+                            {{ form.password(class="form-control") }}
+                            {% if form.password.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.password.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Пароль должен содержать не менее 6 символов
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.course_ids.label(class="form-label") }}
+                            {{ form.course_ids(class="form-control") }}
+                            {% if form.course_ids.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.course_ids.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Выберите курс, к которому будет привязан студент
+                            </small>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-success") }}
+                            <a href="{{ url_for('curator.view_students') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+
+        </div>
+    </div>
+</div>
+{% endblock %}
