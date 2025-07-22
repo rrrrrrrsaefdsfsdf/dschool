@@ -10,8 +10,59 @@
     {% assets "css_all" %}
         <link rel="stylesheet" href="{{ ASSET_URL }}">
     {% endassets %}
+
+    <style>
+.page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    display: none; /* Скрыт по умолчанию */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+.page-loader.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.loader-content {
+    text-align: center;
+}
+.modern-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid transparent;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px auto;
+}
+.loader-text {
+    color: #333;
+    font-size: 16px;
+    font-weight: 500;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
 </head>
+
 <body>
+<div id="pageLoader" class="page-loader">
+    <div class="loader-content">
+        <div class="modern-spinner"></div>
+        <div class="loader-text">Загрузка...</div>
+    </div>
+</div>
+
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
     {% for category, message in messages %}
@@ -654,5 +705,51 @@ document.addEventListener('DOMContentLoaded', function() {
     <script src="{{ ASSET_URL }}"></script>
 {% endassets %}
 {% block extra_js %}{% endblock %}
+<script>
+let showLoader = false;
+let loaderVisible = false;
+
+// Показать загрузчик через 1 секунду, если страница еще не загрузилась
+const loaderTimeout = setTimeout(function() {
+    const loader = document.getElementById('pageLoader');
+    if (loader && !document.readyState === 'complete') {
+        showLoader = true;
+        loaderVisible = true;
+        loader.classList.remove('hidden');
+        loader.style.display = 'flex';
+    }
+}, 1000);
+
+// Когда страница загрузилась
+window.addEventListener('load', function() {
+    const loader = document.getElementById('pageLoader');
+    
+    if (!showLoader) {
+        // Если загрузка заняла меньше 1 секунды - убираем таймаут
+        clearTimeout(loaderTimeout);
+        if (loader) {
+            loader.style.display = 'none';
+        }
+    } else if (loaderVisible) {
+        // Если загрузчик был показан - плавно скрываем его
+        if (loader) {
+            loader.classList.add('hidden');
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 500);
+        }
+    }
+});
+
+// Скрыть загрузчик если DOM уже готов и это было быстро
+document.addEventListener('DOMContentLoaded', function() {
+    if (!showLoader && !loaderVisible) {
+        const loader = document.getElementById('pageLoader');
+        if (loader) {
+            loader.style.display = 'none';
+        }
+    }
+});
+</script>
 </body>
 </html>
